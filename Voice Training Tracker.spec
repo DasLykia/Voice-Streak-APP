@@ -2,11 +2,11 @@
 
 
 a = Analysis(
-    ['voice_tracker.py'],
+    ['app.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=['pytz', 'cryptography'],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

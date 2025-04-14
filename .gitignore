@@ -1,1 +1,26 @@
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment folder (adjust name if different)
 venv/
+.venv/
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+
+# The executable itself
+*.exe
+
+# User-generated data and keys (IMPORTANT!)
+voice_tracker_data.json
+tracker_key.key
+
+# IDE/Editor specific files (optional examples)
+.idea/
+.vscode/
+*.DS_Store
