@@ -58,15 +58,14 @@ This method requires you to have Python and `pip` installed on your system.
 
 4.  **Run the Application:** Execute the main Python script from your terminal:
     ```bash
-    python voice_tracker_app.py
+    python voice_tracker.py
     ```
-    *(**Developer Note:** Ensure `voice_tracker_app.py` is the correct name of your main script file.)*
 
 5.  **Files:** The `voice_tracker_data.json` and potentially `tracker_key.key` files will be created in the same directory where you run the script.
 
 ## Usage
 
-*   Launch the application by double-clicking the `.exe` or running `python voice_tracker_app.py`.
+*   Launch the application by double-clicking the `.exe` or running `python voice_tracker.py`.
 *   Click **"✅ Train Today!"** to log a training session for the current day.
 *   Click **"🛌 Mark as Sick / Rest Day"** if you cannot train due to illness or rest, preserving your streak on planned days.
 *   The **Training Plan** area displays your current routine.
