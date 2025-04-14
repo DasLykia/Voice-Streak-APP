@@ -4,14 +4,15 @@ A desktop application built with Python and CustomTkinter to help track daily vo
 
 ## Features
 
-*   Track daily training sessions.
-*   Maintain a daily streak counter (skips non-planned days).
-*   Track total training sessions.
-*   Mark specific days as sick/rest days to preserve streaks.
-*   View and customize your daily training plan.
+*   Track daily training sessions with a start/pause/stop timer.
+*   Pause and resume the training timer during a session.
+*   Maintain a daily streak counter (skips non-planned days and respects sick days).
+*   Track total training sessions and average/total training time.
+*   Mark specific days as sick/rest days (single or multiple days) to preserve streaks.
+*   View and customize your daily training plan text.
 *   Configure which days of the week are planned training days.
-*   Optional encryption for the save file to prevent manual editing of stats.
-*   Simple, clean interface using CustomTkinter.
+*   Optional encryption for the save file using a unique key.
+*   Simple, clean interface using CustomTkinter with Light/Dark/System theme support.
 
 ## Installation
 
@@ -23,13 +24,13 @@ You can run this application in two ways: using the pre-built executable (recomm
 
 This is the simplest method and does not require Python to be installed on the user's computer.
 
-1.  **Download:** Find the latest release and download the `.exe` file (e.g., `Voice Training Tracker.exe`) from the "Assets" section.
+1.  **Download:** Go to the [Releases page](https://github.com/DasLykia/Voice-Streak-APP/releases) of this repository. Find the latest release and download the `.exe` file (e.g., `Voice Training Tracker.exe`) from the "Assets" section.
 2.  **Save:** Save the downloaded `.exe` file to a convenient location on your computer (e.g., your Desktop or a dedicated folder).
 3.  **Run:** Double-click the `Voice Training Tracker.exe` file to start the application.
-4.  **First Run:**
+4.  **First Run & Data Files:**
     *   The application will automatically create a `voice_tracker_data.json` file in the same folder as the `.exe` to store your progress.
-    *   If you enable encryption later, a `tracker_key.key` file will also be created there. **Do not delete `tracker_key.key` if you use encryption, or your data will be unrecoverable!**
-
+    *   If you enable encryption later, a `tracker_key.key` file will also be created there.
+    *   **CRITICAL:** If you use encryption, **back up your `tracker_key.key` file** somewhere safe! If you lose this file, your encrypted data will be **unrecoverable**.
     *   **Antivirus Warning:** Your antivirus software might flag the `.exe` file, especially the first time you run it. This is common for applications packaged with tools like PyInstaller. If you trust the source (this repository), you may need to add an exception in your antivirus settings.
 
 ---
@@ -41,43 +42,59 @@ This method requires you to have Python and `pip` installed on your system.
 1.  **Install Python:** If you don't have Python, download and install it from [python.org](https://www.python.org/downloads/). Version 3.8 or newer is recommended. Make sure to check the option "Add Python to PATH" during installation (on Windows).
 
 2.  **Get the Code:**
-    *   **Option A (Git):** If you have Git installed, clone the repository:
+    *   **Option A (Git):** If you have Git installed, clone the repository (Replace with your actual URL):
         ```bash
         git clone https://github.com/DasLykia/Voice-Steak-APP.git
         ```
-    *   **Option B (Download ZIP):** Download the repository as a ZIP file from the main repository page (`Code` -> `Download ZIP`). Extract the ZIP file to a location on your computer and navigate into the extracted folder using your terminal (Command Prompt, PowerShell, Terminal).
+    *   **Option B (Download ZIP):** Download the repository as a ZIP file from the main repository page (`Code` -> `Download ZIP`). Extract the ZIP file to a location on your computer.
 
-3.  **Install Dependencies:** Open your terminal (Command Prompt, PowerShell, Terminal) in the project directory (where the Python files are) and install the required libraries:
+3.  **Navigate:** Open your terminal (Command Prompt, PowerShell, Terminal) and navigate into the project directory (the one containing `app.py`, `config.py`, and `utils.py`).
+
+4.  **Install Dependencies:** Install the required libraries using the `requirements.txt` file:
     ```bash
     pip install -r requirements.txt
     ```
-    *Alternatively, if `requirements.txt` is missing, install manually:*
+    *(If `requirements.txt` is missing or outdated, you might need to install manually: `pip install customtkinter pytz cryptography`)*
+
+5.  **Run the Application:** Execute the main application script from your terminal:
     ```bash
-    pip install customtkinter pytz cryptography
+    python app.py
     ```
 
-4.  **Run the Application:** Execute the main Python script from your terminal:
-    ```bash
-    python voice_tracker.py
-    ```
-
-5.  **Files:** The `voice_tracker_data.json` and potentially `tracker_key.key` files will be created in the same directory where you run the script.
+6.  **Files:** The `voice_tracker_data.json` and potentially `tracker_key.key` files will be created in the same directory where you run the script.
 
 ## Usage
 
-*   Launch the application by double-clicking the `.exe` or running `python voice_tracker.py`.
-*   Click **"✅ Train Today!"** to log a training session for the current day.
-*   Click **"🛌 Mark as Sick / Rest Day"** if you cannot train due to illness or rest, preserving your streak on planned days.
-*   The **Training Plan** area displays your current routine.
-    *   Click **"✏️ Edit Plan Text"** to enable editing.
-    *   Make your changes in the text box.
-    *   Click **"💾 Save Plan Settings & Text"** to save changes and disable editing.
+*   Launch the application by double-clicking the `.exe` or running `python app.py`.
+*   **Timer:**
+    *   Click **"▶️ Start"** to begin timing a training session.
+    *   While timing, click **"⏸️ Pause"** to pause the timer. The button will change to **"▶️ Resume"**.
+    *   Click **"▶️ Resume"** to continue timing from where you left off.
+    *   Click **"⏹️ Stop & Log"** to end the current session and record the accumulated time. The timer resets.
+*   **Sick/Rest Days:**
+    *   Click **"🛌 Sick (Today)"** to mark only the current day as a rest day (preserves streak).
+    *   Click **"🗓️ Sick (Multi-Day)"** to enter the number of consecutive days (including today) to mark as rest days.
+*   **Training Plan & Days:**
+    *   The **Training Plan** text area displays your current routine.
+    *   Click **"✏️ Edit Plan/Days"** to enable editing mode. This allows you to:
+        *   Modify the text in the **Training Plan** area.
+        *   Select/deselect your planned training days using the **Mon-Sun Checkboxes** below.
+    *   Click **"💾 Save Settings & Text"** to save both the plan text and selected days, then exit editing mode.
     *   Click the **"?"** button for a quick guide on editing (this button can be hidden).
-*   Use the **Checkboxes** at the bottom to select your planned training days (Mon-Sun).
-*   Use the **"Hide '?' Button"** checkbox to show/hide the editing guide button persistently.
-*   Use the **"🔒 Encrypt Save File"** checkbox to toggle encryption for your `voice_tracker_data.json` file.
-    *   **Warning:** If you enable encryption, a `tracker_key.key` file is generated. **Back up this key file!** If you lose it, your encrypted data cannot be recovered.
-    *   Toggling encryption will rewrite the save file immediately.
+*   **Configuration:**
+    *   Use the **"Hide '?' Button"** checkbox to show/hide the editing guide button persistently.
+    *   Use the **"🔒 Encrypt Save File"** checkbox to toggle encryption for your `voice_tracker_data.json` file. (Requires app restart to take full effect if changing encryption status).
+        *   **Warning:** Remember to back up the `tracker_key.key` file if encryption is enabled!
+    *   Use the **Theme** dropdown to select the application appearance ("Light", "Dark", or "System" default).
+
+## Project Structure
+
+*   `app.py`: Main application logic, UI class, event handlers.
+*   `config.py`: Application constants (file paths, default plan, etc.).
+*   `utils.py`: Helper functions (e.g., time formatting).
+*   `requirements.txt`: List of required Python packages.
+*   `.gitignore`: Specifies files/folders for Git to ignore.
+*   `README.md`: This file.
 
 ## Dependencies
 
