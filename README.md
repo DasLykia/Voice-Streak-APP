@@ -51,7 +51,6 @@ This method requires you to have Python and `pip` installed on your system.
     ```bash
     pip install -r requirements.txt
     ```
-    *(**Developer Note:** Make sure you have created and committed a `requirements.txt` file! See "Developer Notes" below.)*
     *Alternatively, if `requirements.txt` is missing, install manually:*
     ```bash
     pip install customtkinter pytz cryptography
