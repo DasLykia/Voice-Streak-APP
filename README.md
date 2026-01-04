@@ -1,4 +1,4 @@
-# VoiceStride 🚀
+# VoiceStride
 
 **VoiceStride** is a desktop application built with **Electron and React** to help track daily voice training progress, manage streaks, customize training plans, and optionally record your sessions. It is a complete rework of the previous Python-based Voice Training Tracker.
 
