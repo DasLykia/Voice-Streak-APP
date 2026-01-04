@@ -101,15 +101,6 @@ npm start
 
 ---
 
-## Future Planned Features 💡
-
-* Push notifications to remind you to train.
-* Progress graphs and session history visualization.
-* Cloud backup option for recordings and settings.
-* Voice analysis features (pitch, tone, and progress tracking).
-
----
-
 ## Project Structure 🗂️
 
 ```
