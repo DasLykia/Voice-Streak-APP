@@ -18,8 +18,7 @@ import {
   Moon,
   Sun,
   History,
-  Target,
-  RefreshCw
+  Target
 } from 'lucide-react';
 import { Button } from './components/Button';
 import { Modal } from './components/Modal';
@@ -92,8 +91,6 @@ const getLocalISODate = (d: Date = new Date()) => {
 const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) => void; onReset: () => void }> = ({ settings, onSave, onReset }) => {
   const [localSettings, setLocalSettings] = useState(settings);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
-  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
-  const [updateStatus, setUpdateStatus] = useState<string>('');
   
   const ORDERED_DAYS = [
     { id: 1, label: 'Monday' },
@@ -109,17 +106,6 @@ const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) =
     audioService.initialize().then(() => { 
         AudioService.getDevices().then(setDevices);
     }).catch(() => {});
-
-    // Listen for update status
-    if ((window as any).electronAPI?.onUpdateStatus) {
-      (window as any).electronAPI.onUpdateStatus((status: string) => {
-        console.log("Update status received:", status);
-        setUpdateStatus(status);
-        if (['available', 'not-available', 'error', 'downloaded'].includes(status)) {
-          setIsCheckingUpdate(false);
-        }
-      });
-    }
   }, []);
 
   const toggleDay = (dayId: number) => {
@@ -132,16 +118,6 @@ const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) =
 
   const toggleFeature = (key: keyof AppSettings) => {
     setLocalSettings(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const handleManualUpdateCheck = () => {
-    setIsCheckingUpdate(true);
-    setUpdateStatus('Checking...');
-    // Send IPC message
-    (window as any).electronAPI?.checkForUpdates(true);
-    
-    // Safety fallback: stop spinning after 8 seconds if no response
-    setTimeout(() => setIsCheckingUpdate(false), 8000);
   };
 
   return (
@@ -261,31 +237,6 @@ const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) =
                     className="w-5 h-5 accent-primary rounded cursor-pointer"
                 />
             </div>
-            
-            <div className="flex items-center justify-between bg-surface p-3 rounded-lg border border-text-muted/10">
-                <div className="flex flex-col">
-                    <span className="font-medium text-sm">Manual Check</span>
-                    <span className="text-xs text-text-muted">
-                      {isCheckingUpdate ? 'Checking GitHub...' : 'Check for updates now'}
-                    </span>
-                </div>
-                <Button 
-                  size="sm" 
-                  variant={isCheckingUpdate ? "outline" : "secondary"} 
-                  onClick={handleManualUpdateCheck}
-                  disabled={isCheckingUpdate}
-                >
-                    {isCheckingUpdate ? (
-                      <>
-                        <RefreshCw size={14} className="mr-2 animate-spin" /> Checking...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw size={14} className="mr-2" /> Check Now
-                      </>
-                    )}
-                </Button>
-            </div>
         </div>
       </section>
 
@@ -356,8 +307,8 @@ const App: React.FC = () => {
   // Check for Updates on Startup
   useEffect(() => {
     if (settings.checkUpdatesOnStartup) {
-      // Pass false to indicate this is an automatic startup check (silent unless update found)
-      (window as any).electronAPI?.checkForUpdates(false);
+      // Use type assertion if necessary or window interface extension
+      (window as any).electronAPI?.checkForUpdates();
     }
   }, []); // Run once on mount
 
@@ -933,7 +884,7 @@ const App: React.FC = () => {
             <p>Customize your routine in the text editor on the right. Hit "Edit Plan" to make changes.</p>
           </div>
           <div className="pt-6 border-t border-text-muted/10 text-xs text-center font-mono opacity-50">
-            VoiceStride v1.1.0
+            VoiceStride v1.0.0
           </div>
         </div>
       </Modal>
