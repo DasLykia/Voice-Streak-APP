@@ -123,9 +123,3 @@ README.md          # This file
 * **electron-store** – Persistent settings storage
 * **lucide-react** – Icons
 * **date-fns** – Date utilities
-
----
-
-## License 📝
-
-[MIT](LICENSE)
