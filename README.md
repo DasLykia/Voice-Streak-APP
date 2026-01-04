@@ -61,7 +61,7 @@ You can run the app in two ways: **using the pre-built installer** or **from sou
 2. Clone this repository:
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/DasLykia/Voice-Streak-APP.git
 cd Voice-Steak-APP
 ```
 
