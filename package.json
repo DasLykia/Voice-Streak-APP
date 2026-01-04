@@ -1,0 +1,73 @@
+{
+  "name": "voicestride",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.js",
+  "description": "Voice training and pitch tracking desktop app",
+  "author": "Your Name",
+
+  "scripts": {
+    "dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "build": "vite build",
+    "start": "electron .",
+    "dist": "npm run build && electron-builder"
+  },
+
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "electron-store": "^11.0.2",
+    "lucide-react": "^0.562.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.2.1",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0",
+    "wait-on": "^9.0.3"
+  },
+
+  "build": {
+    "appId": "com.voicestride.app",
+    "productName": "VoiceStride",
+
+    "directories": {
+      "output": "release"
+    },
+
+    "files": [
+      "electron/**/*",
+      "dist/**/*",
+      "build/icon.ico"
+    ],
+
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "VoiceStride",
+
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+
+      "include": "electron/installer.nsh"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "VoiceStride",
+  "description": "A professional voice training tracker and recorder with streak management, analytics, and session planning.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
