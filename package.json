@@ -1,3 +1,4 @@
+
 {
   "name": "voicestride",
   "version": "1.0.2",
@@ -5,7 +6,7 @@
   "type": "module",
   "main": "electron/main.js",
   "description": "Voice training and pitch tracking desktop app",
-  "author": "Your Name",
+  "author": "Lykia",
   "repository": {
     "type": "git",
     "url": "https://github.com/VoiceDev/VoiceStride.git"
@@ -56,9 +57,7 @@
       "target": [
         {
           "target": "nsis",
-          "arch": [
-            "x64"
-          ]
+          "arch": ["x64"]
         }
       ],
       "icon": "build/icon.ico"
@@ -69,7 +68,7 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "VoiceStride",
-      "installerIcon": "build/icon.ico",
+      "installerIcon": "build/icon.ico", 
       "uninstallerIcon": "build/icon.ico"
     }
   }

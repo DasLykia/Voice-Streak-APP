@@ -5,7 +5,8 @@ import { fileURLToPath } from "url";
 import Store from "electron-store";
 import electronUpdater from "electron-updater";
 
-const { autoUpdater } = electronUpdater;
+// ESM/CommonJS interop for electron-updater
+const autoUpdater = electronUpdater.autoUpdater || electronUpdater;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,24 +14,121 @@ const __dirname = path.dirname(__filename);
 // Initialize the store
 const store = new Store();
 
-// Configure Auto Updater
-autoUpdater.autoDownload = false;
+// --- CONFIGURATION ---
+autoUpdater.autoDownload = false; // We want to ask the user first
 autoUpdater.autoInstallOnAppQuit = true;
-// Enable logging to console for debugging
-autoUpdater.logger = console;
+autoUpdater.logger = console; // Log to console for debugging
 
-let mainWindow;
-let isManualUpdateCheck = false;
+// Global reference
+let mainWindow = null;
+let isManualCheck = false;
+
+// --- UPDATER EVENT LISTENERS ---
+
+// 1. Checking
+autoUpdater.on('checking-for-update', () => {
+  console.log('[Updater] Checking for updates...');
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-status', 'checking');
+  }
+});
+
+// 2. Update Available
+autoUpdater.on('update-available', (info) => {
+  console.log('[Updater] Update available:', info);
+  isManualCheck = false; // Reset flag
+  
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-status', 'available');
+    
+    // Show Dialog
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update Available',
+      message: `Version ${info.version} is available.\n\nDo you want to download it now?`,
+      buttons: ['Yes, Download', 'No, Later'],
+      defaultId: 0,
+      cancelId: 1
+    }).then(({ response }) => {
+      if (response === 0) {
+        console.log('[Updater] User accepted download.');
+        autoUpdater.downloadUpdate();
+      } else {
+        console.log('[Updater] User rejected download.');
+      }
+    });
+  }
+});
+
+// 3. Update Not Available
+autoUpdater.on('update-not-available', (info) => {
+  console.log('[Updater] No update available:', info);
+  
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-status', 'not-available');
+    
+    // Only show dialog if user manually clicked the button
+    if (isManualCheck) {
+      isManualCheck = false;
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'You are up to date',
+        message: `VoiceStride ${app.getVersion()} is the latest version.`,
+        buttons: ['OK']
+      });
+    }
+  }
+});
+
+// 4. Download Progress
+autoUpdater.on('download-progress', (progressObj) => {
+  console.log(`[Updater] Download progress: ${progressObj.percent}%`);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-status', 'downloading');
+  }
+});
+
+// 5. Update Downloaded
+autoUpdater.on('update-downloaded', (info) => {
+  console.log('[Updater] Update downloaded');
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-status', 'downloaded');
+    
+    dialog.showMessageBox(mainWindow, {
+      type: 'question',
+      title: 'Ready to Install',
+      message: 'The update has been downloaded. Restart the application now to apply updates?',
+      buttons: ['Restart Now', 'Later'],
+      defaultId: 0
+    }).then(({ response }) => {
+      if (response === 0) {
+        autoUpdater.quitAndInstall(false, true);
+      }
+    });
+  }
+});
+
+// 6. Error
+autoUpdater.on('error', (err) => {
+  console.error('[Updater] Error:', err);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-status', 'error');
+    
+    if (isManualCheck) {
+      isManualCheck = false;
+      dialog.showErrorBox('Update Check Failed', 
+        `An error occurred while checking for updates.\n\nPlease check your internet connection.\n\nError: ${err.message || 'Unknown error'}`
+      );
+    }
+  }
+});
 
 function createWindow() {
-  // 1. Get saved bounds or default to 1200x800
   const defaultBounds = { width: 1200, height: 800 };
   const bounds = store.get("windowBounds", defaultBounds);
 
   const win = new BrowserWindow({
-    // 2. Apply saved bounds (width, height, x, y)
     ...bounds,
-    // 3. Set the window icon (This path assumes 'build/icon.ico' exists in project root)
     icon: path.join(__dirname, "../build/icon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -39,52 +137,61 @@ function createWindow() {
     },
   });
 
-  // 4. Save window state on resize or move
   const saveState = () => {
     if (!win.isDestroyed()) {
       store.set("windowBounds", win.getBounds());
     }
   };
 
-  // Debounce could be added here for performance, but for simple apps this is fine
   win.on("resize", saveState);
   win.on("move", saveState);
   win.on("close", saveState);
 
   if (!app.isPackaged) {
-    // DEV mode
     win.loadURL("http://localhost:5173");
     win.webContents.openDevTools();
   } else {
-    // PRODUCTION mode
     const indexHtml = path.join(__dirname, "../dist/index.html");
     win.loadFile(indexHtml);
   }
 
   mainWindow = win;
-  console.log("Electron window created. Dev mode:", !app.isPackaged);
 }
 
 app.whenReady().then(() => {
   createWindow();
 
-  // Updater IPC
+  // IPC Handler
   ipcMain.on('check-for-updates', (event, manual) => {
-    isManualUpdateCheck = manual === true;
-    
-    if (app.isPackaged) {
-      console.log('Checking for updates... Manual:', isManualUpdateCheck);
-      autoUpdater.checkForUpdates();
-    } else {
-      console.log('Update check skipped (not packaged)');
-      if (isManualUpdateCheck) {
+    console.log(`[IPC] Check for updates requested. Manual: ${manual}`);
+    isManualCheck = manual === true;
+
+    if (!app.isPackaged) {
+      console.log('[Updater] Skipped (Dev Mode)');
+      if (isManualCheck) {
+        isManualCheck = false;
         dialog.showMessageBox(mainWindow, {
           type: 'info',
           title: 'Development Mode',
-          message: 'Update functionality is disabled in development mode. Package the app to test updates.'
+          message: 'Auto-updates are disabled in development mode.\n\nPlease package the application to test updates.',
+          buttons: ['OK']
         });
+        // Tell UI we are done
+        mainWindow.webContents.send('update-status', 'not-available');
       }
+      return;
     }
+
+    // Trigger the check
+    autoUpdater.checkForUpdates().catch(err => {
+      console.error('[Updater] checkForUpdates promise rejected:', err);
+      // The 'error' event listener above should catch this, but just in case:
+      if (isManualCheck) {
+         isManualCheck = false;
+         dialog.showErrorBox('Update Error', `Failed to check for updates: ${err.message}`);
+         mainWindow.webContents.send('update-status', 'error');
+      }
+    });
   });
 });
 
@@ -94,58 +201,4 @@ app.on("activate", () => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
-});
-
-/* --- Auto Updater Events --- */
-
-autoUpdater.on('checking-for-update', () => {
-  console.log('Checking for update...');
-});
-
-autoUpdater.on('update-available', (info) => {
-  console.log('Update available:', info);
-  dialog.showMessageBox(mainWindow, {
-    type: 'info',
-    title: 'Update Available',
-    message: `A new version (${info.version}) is available. Do you want to download it now?`,
-    buttons: ['Yes', 'No']
-  }).then((result) => {
-    if (result.response === 0) {
-      autoUpdater.downloadUpdate();
-    }
-  });
-  isManualUpdateCheck = false;
-});
-
-autoUpdater.on('update-not-available', (info) => {
-  console.log('Update not available:', info);
-  if (isManualUpdateCheck) {
-    dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      title: 'No Updates',
-      message: 'You are currently running the latest version.',
-    });
-    isManualUpdateCheck = false;
-  }
-});
-
-autoUpdater.on('update-downloaded', () => {
-  console.log('Update downloaded');
-  dialog.showMessageBox(mainWindow, {
-    type: 'info',
-    title: 'Update Ready',
-    message: 'Update downloaded. Restart the application to apply updates?',
-    buttons: ['Restart', 'Later']
-  }).then((result) => {
-    if (result.response === 0) {
-      autoUpdater.quitAndInstall();
-    }
-  });
-});
-
-autoUpdater.on('error', (err) => {
-  console.error('Update error:', err);
-  // Always show error dialog so the user knows why it failed
-  dialog.showErrorBox('Update Error', 'Failed to check for updates.\n\n' + (err.message || err.toString()));
-  isManualUpdateCheck = false;
 });

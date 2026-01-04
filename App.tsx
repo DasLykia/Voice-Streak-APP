@@ -92,6 +92,8 @@ const getLocalISODate = (d: Date = new Date()) => {
 const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) => void; onReset: () => void }> = ({ settings, onSave, onReset }) => {
   const [localSettings, setLocalSettings] = useState(settings);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string>('');
   
   const ORDERED_DAYS = [
     { id: 1, label: 'Monday' },
@@ -107,6 +109,17 @@ const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) =
     audioService.initialize().then(() => { 
         AudioService.getDevices().then(setDevices);
     }).catch(() => {});
+
+    // Listen for update status
+    if ((window as any).electronAPI?.onUpdateStatus) {
+      (window as any).electronAPI.onUpdateStatus((status: string) => {
+        console.log("Update status received:", status);
+        setUpdateStatus(status);
+        if (['available', 'not-available', 'error', 'downloaded'].includes(status)) {
+          setIsCheckingUpdate(false);
+        }
+      });
+    }
   }, []);
 
   const toggleDay = (dayId: number) => {
@@ -122,7 +135,13 @@ const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) =
   };
 
   const handleManualUpdateCheck = () => {
+    setIsCheckingUpdate(true);
+    setUpdateStatus('Checking...');
+    // Send IPC message
     (window as any).electronAPI?.checkForUpdates(true);
+    
+    // Safety fallback: stop spinning after 8 seconds if no response
+    setTimeout(() => setIsCheckingUpdate(false), 8000);
   };
 
   return (
@@ -246,10 +265,25 @@ const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) =
             <div className="flex items-center justify-between bg-surface p-3 rounded-lg border border-text-muted/10">
                 <div className="flex flex-col">
                     <span className="font-medium text-sm">Manual Check</span>
-                    <span className="text-xs text-text-muted">Check for updates now</span>
+                    <span className="text-xs text-text-muted">
+                      {isCheckingUpdate ? 'Checking GitHub...' : 'Check for updates now'}
+                    </span>
                 </div>
-                <Button size="sm" variant="secondary" onClick={handleManualUpdateCheck}>
-                    <RefreshCw size={14} className="mr-2" /> Check Now
+                <Button 
+                  size="sm" 
+                  variant={isCheckingUpdate ? "outline" : "secondary"} 
+                  onClick={handleManualUpdateCheck}
+                  disabled={isCheckingUpdate}
+                >
+                    {isCheckingUpdate ? (
+                      <>
+                        <RefreshCw size={14} className="mr-2 animate-spin" /> Checking...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw size={14} className="mr-2" /> Check Now
+                      </>
+                    )}
                 </Button>
             </div>
         </div>
