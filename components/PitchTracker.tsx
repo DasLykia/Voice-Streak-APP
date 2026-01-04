@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { audioService } from '../services/audio';
-import { Activity, Target } from 'lucide-react';
+import { Activity, Target, Volume2 } from 'lucide-react';
 
 interface PitchTrackerProps {
   targetPitch: number;
@@ -15,6 +15,75 @@ export const PitchTracker: React.FC<PitchTrackerProps> = ({ targetPitch, onTarge
   // Smoothing
   const historyRef = useRef<number[]>([]);
   const HISTORY_SIZE = 5;
+
+  // Tone generation refs
+  const oscRef = useRef<OscillatorNode | null>(null);
+  const gainRef = useRef<GainNode | null>(null);
+  const ctxRef = useRef<AudioContext | null>(null);
+
+  useEffect(() => {
+    // Cleanup tone on unmount
+    return () => {
+      if (oscRef.current) {
+        try { oscRef.current.stop(); } catch(e) {}
+        oscRef.current.disconnect();
+      }
+      if (gainRef.current) gainRef.current.disconnect();
+      if (ctxRef.current && ctxRef.current.state !== 'closed') {
+        ctxRef.current.close();
+      }
+    };
+  }, []);
+
+  const startTone = () => {
+    if (!ctxRef.current) {
+        ctxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const ctx = ctxRef.current;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    if (oscRef.current) return; // Already playing
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(targetPitch, ctx.currentTime);
+
+    // Smooth attack to avoid clicking
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05); // Moderate volume
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+
+    oscRef.current = osc;
+    gainRef.current = gain;
+  };
+
+  const stopTone = () => {
+    if (oscRef.current && gainRef.current && ctxRef.current) {
+        const osc = oscRef.current;
+        const gain = gainRef.current;
+        const ctx = ctxRef.current;
+
+        // Smooth release
+        const now = ctx.currentTime;
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setValueAtTime(gain.gain.value, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.05);
+        osc.stop(now + 0.05);
+
+        setTimeout(() => {
+            osc.disconnect();
+            gain.disconnect();
+        }, 60);
+
+        oscRef.current = null;
+        gainRef.current = null;
+    }
+  };
 
   useEffect(() => {
     if (!isActive) {
@@ -80,8 +149,20 @@ export const PitchTracker: React.FC<PitchTrackerProps> = ({ targetPitch, onTarge
           </div>
         </div>
         
-        <div className="flex items-center gap-2 bg-background/50 p-1 rounded-lg border border-white/5">
-           <Target size={14} className="text-text-muted ml-2" />
+        <div className="flex items-center gap-1 bg-background/50 p-1 rounded-lg border border-white/5">
+           <button
+             onMouseDown={startTone}
+             onMouseUp={stopTone}
+             onMouseLeave={stopTone}
+             onTouchStart={(e) => { e.preventDefault(); startTone(); }}
+             onTouchEnd={(e) => { e.preventDefault(); stopTone(); }}
+             className="p-1.5 text-text-muted hover:text-primary hover:bg-white/5 rounded-md transition-colors active:scale-95 active:text-primary focus:outline-none"
+             title="Hold to play target tone"
+           >
+             <Volume2 size={16} />
+           </button>
+           <div className="w-px h-4 bg-white/10 mx-1"></div>
+           <Target size={14} className="text-text-muted ml-1" />
            <input 
              type="number" 
              className="w-12 bg-transparent text-xs font-mono text-center outline-none text-text"
