@@ -221,6 +221,25 @@ const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) =
         </div>
       </section>
 
+      {/* System Section */}
+      <section className="space-y-4">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2 border-b border-text-muted/10 pb-2">System</h3>
+        <div className="space-y-3">
+            <div className="flex items-center justify-between bg-surface p-3 rounded-lg border border-text-muted/10">
+                <div className="flex flex-col">
+                    <span className="font-medium text-sm">Auto-check for Updates</span>
+                    <span className="text-xs text-text-muted">Check for updates on application startup</span>
+                </div>
+                <input 
+                    type="checkbox" 
+                    checked={localSettings.checkUpdatesOnStartup}
+                    onChange={(e) => setLocalSettings({...localSettings, checkUpdatesOnStartup: e.target.checked})}
+                    className="w-5 h-5 accent-primary rounded cursor-pointer"
+                />
+            </div>
+        </div>
+      </section>
+
       {/* Schedule Section */}
       <section className="space-y-2">
         <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2 border-b border-text-muted/10 pb-2">Schedule</h3>
@@ -284,6 +303,14 @@ const App: React.FC = () => {
 
   // Status Message
   const [statusMessage, setStatusMessage] = useState("Ready to train.");
+
+  // Check for Updates on Startup
+  useEffect(() => {
+    if (settings.checkUpdatesOnStartup) {
+      // Use type assertion if necessary or window interface extension
+      (window as any).electronAPI?.checkForUpdates();
+    }
+  }, []); // Run once on mount
 
   // Update temp focus when settings change
   useEffect(() => {
@@ -857,7 +884,7 @@ const App: React.FC = () => {
             <p>Customize your routine in the text editor on the right. Hit "Edit Plan" to make changes.</p>
           </div>
           <div className="pt-6 border-t border-text-muted/10 text-xs text-center font-mono opacity-50">
-            VoiceStride v1.1.0
+            VoiceStride v1.0.0
           </div>
         </div>
       </Modal>

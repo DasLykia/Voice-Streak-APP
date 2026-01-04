@@ -64,6 +64,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   planFontSize: 12,
   targetPitch: 261, // Middle C (C4)
   deleteSessionWithRecording: false,
+  checkUpdatesOnStartup: true,
   
   // Feature Defaults
   enableHistory: true,

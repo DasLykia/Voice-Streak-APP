@@ -47,6 +47,7 @@ export interface AppSettings {
   planFontSize: number;
   targetPitch: number; // Target frequency in Hz
   deleteSessionWithRecording: boolean;
+  checkUpdatesOnStartup: boolean;
   
   // Feature Toggles
   enableHistory: boolean;
