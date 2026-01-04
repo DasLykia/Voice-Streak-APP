@@ -18,7 +18,8 @@ import {
   Moon,
   Sun,
   History,
-  Target
+  Target,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from './components/Button';
 import { Modal } from './components/Modal';
@@ -118,6 +119,10 @@ const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) =
 
   const toggleFeature = (key: keyof AppSettings) => {
     setLocalSettings(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleManualUpdateCheck = () => {
+    (window as any).electronAPI?.checkForUpdates(true);
   };
 
   return (
@@ -237,6 +242,16 @@ const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) =
                     className="w-5 h-5 accent-primary rounded cursor-pointer"
                 />
             </div>
+            
+            <div className="flex items-center justify-between bg-surface p-3 rounded-lg border border-text-muted/10">
+                <div className="flex flex-col">
+                    <span className="font-medium text-sm">Manual Check</span>
+                    <span className="text-xs text-text-muted">Check for updates now</span>
+                </div>
+                <Button size="sm" variant="secondary" onClick={handleManualUpdateCheck}>
+                    <RefreshCw size={14} className="mr-2" /> Check Now
+                </Button>
+            </div>
         </div>
       </section>
 
@@ -307,8 +322,8 @@ const App: React.FC = () => {
   // Check for Updates on Startup
   useEffect(() => {
     if (settings.checkUpdatesOnStartup) {
-      // Use type assertion if necessary or window interface extension
-      (window as any).electronAPI?.checkForUpdates();
+      // Pass false to indicate this is an automatic startup check (silent unless update found)
+      (window as any).electronAPI?.checkForUpdates(false);
     }
   }, []); // Run once on mount
 
@@ -884,7 +899,7 @@ const App: React.FC = () => {
             <p>Customize your routine in the text editor on the right. Hit "Edit Plan" to make changes.</p>
           </div>
           <div className="pt-6 border-t border-text-muted/10 text-xs text-center font-mono opacity-50">
-            VoiceStride v1.0.0
+            VoiceStride v1.1.0
           </div>
         </div>
       </Modal>
