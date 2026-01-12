@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
 import { TrainingSession } from '../types';
 import { Clock, Calendar, FileText, ChevronDown, Edit2, Save, X, Trash2, CheckSquare, Square } from 'lucide-react';
 import { Button } from './Button';
+import { PitchGraph } from './PitchGraph';
 
 interface SessionHistoryProps {
   sessions: TrainingSession[];
@@ -128,15 +130,16 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({ sessions, onUpda
       <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
         {sortedSessions.map((session) => {
           const isSelected = selectedIds.has(session.id);
+          const isExpanded = expandedId === session.id;
+
           return (
             <div 
                 key={session.id} 
-                className={`bg-surface rounded-xl border overflow-hidden transition-all duration-200 cursor-pointer ${
+                className={`bg-surface rounded-xl border overflow-hidden transition-all duration-200 ${
                     isSelected ? 'border-primary/30 bg-primary/5' : 'border-white/5 hover:border-white/10'
-                } ${expandedId === session.id ? 'ring-1 ring-white/10' : ''}`}
-                onClick={() => toggleExpand(session.id)}
+                } ${isExpanded ? 'ring-1 ring-white/10' : ''}`}
             >
-                <div className="p-4 flex gap-3">
+                <div className="p-4 flex gap-3 cursor-pointer" onClick={() => toggleExpand(session.id)}>
                     {/* Checkbox Column */}
                     <div className="flex items-start pt-1">
                         <button 
@@ -174,53 +177,68 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({ sessions, onUpda
                         <div className="flex justify-between items-center text-sm">
                             <span className="text-text-muted">Duration: <span className="text-text">{formatDuration(session.duration)}</span></span>
                             {!editingId && (
-                                <ChevronDown size={16} className={`text-text-muted transition-transform duration-300 ${expandedId === session.id ? 'rotate-180' : ''}`} />
+                                <ChevronDown size={16} className={`text-text-muted transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                             )}
                         </div>
                     </div>
                 </div>
 
-                {/* Expandable Notes Section */}
-                {(expandedId === session.id || editingId === session.id) && (
-                <div className="px-4 pb-4 pt-0 animate-in slide-in-from-top-2 pl-12">
-                    <div className="w-full h-px bg-white/5 mb-3" />
-                    
-                    {editingId === session.id ? (
-                    <div className="flex flex-col gap-2" onClick={e => e.stopPropagation()}>
-                        <textarea
-                        className="w-full bg-background/50 text-text p-3 rounded-lg border border-white/10 focus:ring-2 focus:ring-primary outline-none resize-none text-sm"
-                        rows={3}
-                        value={noteText}
-                        onChange={e => setNoteText(e.target.value)}
-                        placeholder="Add session notes..."
-                        autoFocus
-                        />
-                        <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={cancelEditing}>
-                            <X size={14} className="mr-1" /> Cancel
-                        </Button>
-                        <Button variant="primary" size="sm" onClick={(e) => saveNote(session, e)}>
-                            <Save size={14} className="mr-1" /> Save
-                        </Button>
+                {/* Expandable Section */}
+                {isExpanded && (
+                <div className="px-4 pb-4 pt-0 animate-in slide-in-from-top-2 duration-300">
+                    <div className="w-full h-px bg-white/5 mb-3 ml-8" />
+                    <div className="pl-8 space-y-4">
+                      {session.pitchData && session.pitchData.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Pitch Analysis</h4>
+                          <div className="bg-background/50 rounded-lg border border-white/5 p-2">
+                            <PitchGraph
+                              data={session.pitchData}
+                              targetPitch={session.targetPitch}
+                              height={150}
+                              isScrollable={true}
+                            />
+                          </div>
                         </div>
+                      )}
+
+                      {editingId === session.id ? (
+                      <div className="flex flex-col gap-2" onClick={e => e.stopPropagation()}>
+                          <textarea
+                          className="w-full bg-background/50 text-text p-3 rounded-lg border border-white/10 focus:ring-2 focus:ring-primary outline-none resize-none text-sm"
+                          rows={3}
+                          value={noteText}
+                          onChange={e => setNoteText(e.target.value)}
+                          placeholder="Add session notes..."
+                          autoFocus
+                          />
+                          <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="sm" onClick={cancelEditing}>
+                              <X size={14} className="mr-1" /> Cancel
+                          </Button>
+                          <Button variant="primary" size="sm" onClick={(e) => saveNote(session, e)}>
+                              <Save size={14} className="mr-1" /> Save
+                          </Button>
+                          </div>
+                      </div>
+                      ) : (
+                      <div className="flex justify-between items-start gap-2 group">
+                          <div className="flex-1 text-sm text-text-muted leading-relaxed">
+                          {session.notes ? (
+                              <div className="flex gap-2">
+                              <FileText size={14} className="mt-1 shrink-0 opacity-70" />
+                              <span className="whitespace-pre-wrap">{session.notes}</span>
+                              </div>
+                          ) : (
+                              <span className="italic opacity-50">No notes for this session.</span>
+                          )}
+                          </div>
+                          <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => startEditing(session, e)}>
+                          <Edit2 size={14} />
+                          </Button>
+                      </div>
+                      )}
                     </div>
-                    ) : (
-                    <div className="flex justify-between items-start gap-2 group">
-                        <div className="flex-1 text-sm text-text-muted leading-relaxed">
-                        {session.notes ? (
-                            <div className="flex gap-2">
-                            <FileText size={14} className="mt-1 shrink-0 opacity-70" />
-                            <span className="whitespace-pre-wrap">{session.notes}</span>
-                            </div>
-                        ) : (
-                            <span className="italic opacity-50">No notes for this session.</span>
-                        )}
-                        </div>
-                        <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => startEditing(session, e)}>
-                        <Edit2 size={14} />
-                        </Button>
-                    </div>
-                    )}
                 </div>
                 )}
             </div>

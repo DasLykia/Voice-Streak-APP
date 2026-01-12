@@ -1,4 +1,3 @@
-
 export const calculateStreaks = (
   history: { [date: string]: boolean },
   sickDays: { [date: string]: boolean }

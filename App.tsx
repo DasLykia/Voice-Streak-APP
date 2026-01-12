@@ -18,8 +18,9 @@ import {
   Moon,
   Sun,
   History,
-  Target
+  Target,
 } from 'lucide-react';
+import type { UpdateInfo } from 'velopack';
 import { Button } from './components/Button';
 import { Modal } from './components/Modal';
 import { StatsPanel } from './components/StatsPanel';
@@ -39,7 +40,8 @@ import {
   UserStats,
   TrainingSession,
   Goal,
-  Achievement
+  Achievement,
+  PitchDataPoint
 } from './types';
 import { 
   DEFAULT_SETTINGS, 
@@ -87,10 +89,18 @@ const getLocalISODate = (d: Date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+// Updated Type to include 'uptodate'
+type UpdateState = 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'error' | 'uptodate';
+
 // Helper component for Settings
-const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) => void; onReset: () => void }> = ({ settings, onSave, onReset }) => {
+const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) => void; onReset: () => void; appVersion: string }> = ({ settings, onSave, onReset, appVersion }) => {
   const [localSettings, setLocalSettings] = useState(settings);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  
+  const [updateState, setUpdateState] = useState<UpdateState>('idle');
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [updateError, setUpdateError] = useState('');
+
   
   const ORDERED_DAYS = [
     { id: 1, label: 'Monday' },
@@ -107,7 +117,7 @@ const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) =
         AudioService.getDevices().then(setDevices);
     }).catch(() => {});
   }, []);
-
+  
   const toggleDay = (dayId: number) => {
     const current = localSettings.trainingDays;
     const next = current.includes(dayId) 
@@ -120,11 +130,90 @@ const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) =
     setLocalSettings(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const handleCheckForUpdates = async () => {
+    setUpdateState('checking');
+    setUpdateError('');
+    try {
+        const info = await window.velopackApi.checkForUpdates();
+        if (info) {
+            setUpdateInfo(info);
+            setUpdateState('available');
+        } else {
+            // Updated logic for positive feedback
+            setUpdateState('uptodate');
+            setTimeout(() => setUpdateState('idle'), 3000);
+        }
+    } catch (e: any) {
+        setUpdateState('error');
+        setUpdateError(e.message || 'Check failed. Is the release published?');
+    }
+  };
+
+  const handleDownloadUpdate = async () => {
+    if (!updateInfo) return;
+    setUpdateState('downloading');
+    try {
+        await window.velopackApi.downloadUpdates(updateInfo);
+        setUpdateState('downloaded');
+    } catch (e: any) {
+        setUpdateState('error');
+        setUpdateError(e.message || 'Failed to download update.');
+    }
+  };
+
+  const handleApplyUpdate = async () => {
+    if (!updateInfo) return;
+    try {
+        await window.velopackApi.applyUpdates(updateInfo);
+        // The app will restart, no further state change needed.
+    } catch (e: any) {
+        setUpdateState('error');
+        setUpdateError(e.message || 'Failed to apply update.');
+    }
+  };
+  
+  const getUpdateComponent = () => {
+    switch(updateState) {
+        case 'checking':
+            return <p className="text-text-muted animate-pulse">Checking...</p>;
+        case 'uptodate':
+            return <p className="text-secondary font-medium">✨ You are up to date!</p>;
+        case 'available':
+            return (
+                <div className="flex flex-col items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                    <p className="text-primary font-bold">v{updateInfo?.TargetFullRelease.version} Available!</p>
+                    <Button variant="secondary" size="sm" onClick={handleDownloadUpdate}>Download</Button>
+                </div>
+            );
+        case 'downloading':
+            return <p className="text-text-muted">Downloading update...</p>;
+        case 'downloaded':
+            return (
+                <div className="flex flex-col items-center gap-2">
+                    <p className="text-secondary">Ready to Install</p>
+                    <Button variant="primary" size="sm" onClick={handleApplyUpdate}>Restart & Install</Button>
+                </div>
+            );
+        case 'error':
+             return <p className="text-danger text-xs max-w-[150px] text-center">{updateError}</p>;
+        case 'idle':
+        default:
+            return (
+                <Button variant="outline" size="sm" onClick={handleCheckForUpdates}>
+                    Check for Updates
+                </Button>
+            );
+    }
+  }
+
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Appearance Section */}
-      <section>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4 border-b border-text-muted/10 pb-2">Appearance</h3>
+      <div>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted pb-2 border-b border-text-muted/10 mb-4">
+          Appearance
+        </h3>
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setLocalSettings({...localSettings, theme: 'light'})}
@@ -141,11 +230,13 @@ const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) =
             <span className="font-medium text-sm">Dark Mode</span>
           </button>
         </div>
-      </section>
+      </div>
 
       {/* Features Section */}
-      <section>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4 border-b border-text-muted/10 pb-2">Features</h3>
+      <div>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted pb-2 border-b border-text-muted/10 mb-4">
+          Features
+        </h3>
         <div className="grid grid-cols-2 gap-3">
           {[
             { key: 'enableHistory', label: 'Training History' },
@@ -165,101 +256,108 @@ const SettingsForm: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) =
             </label>
           ))}
         </div>
-      </section>
+      </div>
 
       {/* Audio Section */}
-      <section className="space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2 border-b border-text-muted/10 pb-2">Audio Setup</h3>
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-text-muted">Input Device</label>
-          <select 
-            className="w-full bg-surface border border-text-muted/20 rounded-lg p-2.5 focus:ring-2 focus:ring-primary outline-none transition-shadow"
-            value={localSettings.inputDeviceId}
-            onChange={(e) => setLocalSettings({...localSettings, inputDeviceId: e.target.value})}
-          >
-            <option value="default">Default System Input</option>
-            {devices.map(d => (
-              <option key={d.deviceId} value={d.deviceId}>{d.label || `Microphone ${d.deviceId.slice(0,5)}...`}</option>
-            ))}
-          </select>
-        </div>
-        
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-text-muted">Microphone Gain: {localSettings.micGain.toFixed(1)}x</label>
-          <input 
-            type="range" min="0" max="2" step="0.1" 
-            value={localSettings.micGain}
-            onChange={(e) => setLocalSettings({...localSettings, micGain: parseFloat(e.target.value)})}
-            className="w-full accent-primary h-2 bg-surface rounded-lg appearance-none cursor-pointer"
-          />
-        </div>
+      <div>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted pb-2 border-b border-text-muted/10 mb-4">
+          Audio Setup
+        </h3>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-text-muted">Input Device</label>
+            <select 
+              className="w-full bg-surface border border-text-muted/20 rounded-lg p-2.5 focus:ring-2 focus:ring-primary outline-none transition-shadow"
+              value={localSettings.inputDeviceId}
+              onChange={(e) => setLocalSettings({...localSettings, inputDeviceId: e.target.value})}
+            >
+              <option value="default">Default System Input</option>
+              {devices.map(d => (
+                <option key={d.deviceId} value={d.deviceId}>{d.label || `Microphone ${d.deviceId.slice(0,5)}...`}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-text-muted">Microphone Gain: {localSettings.micGain.toFixed(1)}x</label>
+            <input 
+              type="range" min="0" max="2" step="0.1" 
+              value={localSettings.micGain}
+              onChange={(e) => setLocalSettings({...localSettings, micGain: parseFloat(e.target.value)})}
+              className="w-full accent-primary h-2 bg-surface rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
 
-        <div className="space-y-3">
-            <div className="flex items-center justify-between bg-surface p-3 rounded-lg border border-text-muted/10">
-                <span className="font-medium text-sm">Record Sessions Automatically</span>
-                <input 
-                    type="checkbox" 
-                    checked={localSettings.enableRecording}
-                    onChange={(e) => setLocalSettings({...localSettings, enableRecording: e.target.checked})}
-                    className="w-5 h-5 accent-primary rounded cursor-pointer"
-                />
-            </div>
+          <div className="space-y-3">
+              <div className="flex items-center justify-between bg-surface p-3 rounded-lg border border-text-muted/10">
+                  <span className="font-medium text-sm">Record Sessions Automatically</span>
+                  <input 
+                      type="checkbox" 
+                      checked={localSettings.enableRecording}
+                      onChange={(e) => setLocalSettings({...localSettings, enableRecording: e.target.checked})}
+                      className="w-5 h-5 accent-primary rounded cursor-pointer"
+                  />
+              </div>
 
-            <div className={`flex items-center justify-between bg-surface p-3 rounded-lg border border-text-muted/10 transition-opacity ${!localSettings.enableRecording ? 'opacity-50 pointer-events-none' : ''}`}>
-                <div className="flex flex-col">
-                    <span className="font-medium text-sm">Sync Deletion</span>
-                    <span className="text-xs text-text-muted">Delete session & recording together</span>
-                </div>
-                <input 
-                    type="checkbox" 
-                    checked={localSettings.deleteSessionWithRecording}
-                    onChange={(e) => setLocalSettings({...localSettings, deleteSessionWithRecording: e.target.checked})}
-                    disabled={!localSettings.enableRecording}
-                    className="w-5 h-5 accent-primary rounded cursor-pointer"
-                />
-            </div>
+              <div className={`flex items-center justify-between bg-surface p-3 rounded-lg border border-text-muted/10 transition-opacity ${!localSettings.enableRecording ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <div className="flex flex-col">
+                      <span className="font-medium text-sm">Sync Deletion</span>
+                      <span className="text-xs text-text-muted">Delete session & recording together</span>
+                  </div>
+                  <input 
+                      type="checkbox" 
+                      checked={localSettings.deleteSessionWithRecording}
+                      onChange={(e) => setLocalSettings({...localSettings, deleteSessionWithRecording: e.target.checked})}
+                      disabled={!localSettings.enableRecording}
+                      className="w-5 h-5 accent-primary rounded cursor-pointer"
+                  />
+              </div>
+          </div>
         </div>
-      </section>
+      </div>
 
       {/* System Section */}
-      <section className="space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2 border-b border-text-muted/10 pb-2">System</h3>
+      <div>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted pb-2 border-b border-text-muted/10 mb-4">
+          System
+        </h3>
         <div className="space-y-3">
-            <div className="flex items-center justify-between bg-surface p-3 rounded-lg border border-text-muted/10">
+             <div className="flex items-center justify-between bg-surface p-3 rounded-lg border border-text-muted/10">
                 <div className="flex flex-col">
-                    <span className="font-medium text-sm">Auto-check for Updates</span>
-                    <span className="text-xs text-text-muted">Check for updates on application startup</span>
+                    <span className="font-medium text-sm">Current Version</span>
+                    <span className="text-xs text-text-muted font-mono">{appVersion || '...'}</span>
                 </div>
-                <input 
-                    type="checkbox" 
-                    checked={localSettings.checkUpdatesOnStartup}
-                    onChange={(e) => setLocalSettings({...localSettings, checkUpdatesOnStartup: e.target.checked})}
-                    className="w-5 h-5 accent-primary rounded cursor-pointer"
-                />
+                <div className="text-sm min-h-[32px] flex items-center justify-center">
+                   {getUpdateComponent()}
+                </div>
             </div>
         </div>
-      </section>
+      </div>
 
       {/* Schedule Section */}
-      <section className="space-y-2">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2 border-b border-text-muted/10 pb-2">Schedule</h3>
-        <label className="block text-sm font-medium text-text-muted">Training Days (Streak Logic)</label>
-        <div className="flex flex-wrap gap-2">
-          {ORDERED_DAYS.map((day) => (
-            <button
-              key={day.id}
-              onClick={() => toggleDay(day.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
-                localSettings.trainingDays.includes(day.id) 
-                  ? 'bg-secondary text-white shadow-secondary/30' 
-                  : 'bg-surface text-text-muted hover:bg-black/5'
-              }`}
-            >
-              {day.label.slice(0,3)}
-            </button>
-          ))}
+      <div>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted pb-2 border-b border-text-muted/10 mb-4">
+          Schedule
+        </h3>
+        <div className="space-y-2">
+            <label className="block text-sm font-medium text-text-muted">Training Days (Streak Logic)</label>
+            <div className="flex flex-wrap gap-2">
+            {ORDERED_DAYS.map((day) => (
+                <button
+                key={day.id}
+                onClick={() => toggleDay(day.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                    localSettings.trainingDays.includes(day.id) 
+                    ? 'bg-secondary text-white shadow-secondary/30' 
+                    : 'bg-surface text-text-muted hover:bg-black/5'
+                }`}
+                >
+                {day.label.slice(0,3)}
+                </button>
+            ))}
+            </div>
         </div>
-      </section>
+      </div>
 
       <div className="pt-6 flex gap-3 border-t border-text-muted/10">
         <Button className="flex-1 shadow-lg shadow-primary/20" onClick={() => onSave(localSettings)}>Save Changes</Button>
@@ -283,6 +381,7 @@ const App: React.FC = () => {
   const [recordings, setRecordings] = useState<Recording[]>(() => loadFromStorage(STORAGE_KEYS.RECORDINGS, []));
   const [sessions, setSessions] = useState<TrainingSession[]>(() => loadFromStorage(STORAGE_KEYS.SESSIONS, []));
   const [goals, setGoals] = useState<Goal[]>(() => loadFromStorage(STORAGE_KEYS.GOALS, []));
+  const [appVersion, setAppVersion] = useState('');
 
   // Modals
   const [showSettings, setShowSettings] = useState(false);
@@ -300,17 +399,19 @@ const App: React.FC = () => {
   const [sessionDuration, setSessionDuration] = useState(0);
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
+  
+  // Pitch Data
+  const pitchDataRef = useRef<PitchDataPoint[]>([]);
+  const pitchIntervalRef = useRef<number | null>(null);
+  const [livePitchData, setLivePitchData] = useState<PitchDataPoint[]>([]);
 
   // Status Message
   const [statusMessage, setStatusMessage] = useState("Ready to train.");
 
-  // Check for Updates on Startup
+  // Velopack API Effects
   useEffect(() => {
-    if (settings.checkUpdatesOnStartup) {
-      // Use type assertion if necessary or window interface extension
-      (window as any).electronAPI?.checkForUpdates();
-    }
-  }, []); // Run once on mount
+    window.velopackApi?.getVersion().then(setAppVersion);
+  }, []);
 
   // Update temp focus when settings change
   useEffect(() => {
@@ -404,6 +505,20 @@ const App: React.FC = () => {
     }
   };
 
+  const startPitchCollection = () => {
+      if (pitchIntervalRef.current) clearInterval(pitchIntervalRef.current);
+      pitchIntervalRef.current = window.setInterval(() => {
+          const p = audioService.getPitch();
+          const time = Date.now() - startTimeRef.current;
+          
+          const newPoint = { time, pitch: p };
+          pitchDataRef.current.push(newPoint);
+
+          // Update live data, keeping only the last 60 seconds of real-time
+          setLivePitchData(prev => [...prev, newPoint].filter(dp => (time - dp.time) < 60000));
+      }, 100); // 10hz update rate
+  };
+
   // Actions
   const handleStartTraining = async () => {
     try {
@@ -418,6 +533,12 @@ const App: React.FC = () => {
       
       setAppState(AppState.TRAINING);
       setStatusMessage("Training in progress... Keep it up!");
+
+      // Pitch data collection
+      pitchDataRef.current = [];
+      setLivePitchData([]); // Clear live data on start
+      startPitchCollection();
+
     } catch (e) {
       setStatusMessage("Error starting audio. Check permissions.");
     }
@@ -426,18 +547,24 @@ const App: React.FC = () => {
   const handlePauseTraining = () => {
     setAppState(AppState.PAUSED);
     if (settings.enableRecording) audioService.pauseRecording();
+    if (pitchIntervalRef.current) clearInterval(pitchIntervalRef.current);
     setStatusMessage("Session paused.");
   };
 
   const handleResumeTraining = () => {
     setAppState(AppState.TRAINING);
     if (settings.enableRecording) audioService.resumeRecording();
+    startPitchCollection();
     setStatusMessage("Training resumed.");
   };
 
   const handleStopTraining = async () => {
     setAppState(AppState.IDLE);
     
+    if (pitchIntervalRef.current) clearInterval(pitchIntervalRef.current);
+    const finalPitchData = pitchDataRef.current;
+    setLivePitchData([]); // Clear live data on stop
+
     let recordingId: string | undefined;
     
     if (settings.enableRecording) {
@@ -454,7 +581,9 @@ const App: React.FC = () => {
           filename,
           date: now,
           duration: sessionDuration,
-          size: blob.size
+          size: blob.size,
+          pitchData: finalPitchData,
+          targetPitch: settings.targetPitch
         };
         
         await saveAudioBlob(recordingId, blob);
@@ -476,7 +605,9 @@ const App: React.FC = () => {
         startTime: startTimeRef.current,
         endTime: now,
         duration: sessionDuration,
-        recordingId
+        recordingId,
+        pitchData: finalPitchData,
+        targetPitch: settings.targetPitch,
       };
       setSessions(prev => [newSession, ...prev]);
       // Pass to checkProgress
@@ -581,6 +712,7 @@ const App: React.FC = () => {
 
   const handleResetApp = () => {
     if (confirm("This will delete all training history and settings. Are you sure?")) {
+       window.velopackApi?.clearAppData(); // Clear electron-store
        localStorage.clear();
        window.location.reload();
     }
@@ -596,6 +728,8 @@ const App: React.FC = () => {
     const s = seconds % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
+
+  const isTrainingActive = appState !== AppState.IDLE;
 
   return (
     <>
@@ -634,7 +768,13 @@ const App: React.FC = () => {
             <ThermometerSnowflake size={20} className="mr-3 opacity-80" /> Register Sick Day
           </Button>
           
-          <Button variant="ghost" className="w-full justify-start text-base" onClick={() => setShowSettings(true)}>
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start text-base" 
+            onClick={() => setShowSettings(true)}
+            disabled={isTrainingActive}
+            title={isTrainingActive ? "Settings are disabled during a session" : "Open Settings"}
+          >
             <SettingsIcon size={20} className="mr-3 opacity-80" /> Settings
           </Button>
           
@@ -655,7 +795,7 @@ const App: React.FC = () => {
         {/* Top Status Bar */}
         <header className="h-16 flex items-center justify-between px-6 bg-surface/50 backdrop-blur-md sticky top-0 z-10 border-b border-text-muted/5 shrink-0">
            <div className="flex items-center gap-3 bg-surface px-4 py-2 rounded-full border border-text-muted/10 shadow-sm">
-              <div className={`w-2.5 h-2.5 rounded-full ${appState === AppState.TRAINING ? 'bg-danger animate-pulse' : 'bg-secondary'}`} />
+              <div className={`w-2.5 h-2.5 rounded-full ${isTrainingActive ? 'bg-danger animate-pulse' : 'bg-secondary'}`} />
               <span className="text-sm font-semibold text-text-muted">{statusMessage}</span>
            </div>
            
@@ -664,7 +804,14 @@ const App: React.FC = () => {
              <div className="text-sm font-medium text-text-muted opacity-80 hidden sm:block">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
              </div>
-             <Button variant="ghost" size="sm" className="md:hidden" onClick={() => setShowSettings(true)}>
+             <Button 
+                variant="ghost" 
+                size="sm" 
+                className="md:hidden" 
+                onClick={() => setShowSettings(true)}
+                disabled={isTrainingActive}
+                title={isTrainingActive ? "Settings are disabled during a session" : "Open Settings"}
+              >
                <SettingsIcon size={20} />
              </Button>
            </div>
@@ -679,7 +826,7 @@ const App: React.FC = () => {
               {/* Timer Card */}
               <div className="bg-surface rounded-3xl border border-white/5 p-6 flex flex-col items-center justify-center shadow-soft relative overflow-hidden transition-all hover:shadow-lg group min-h-[250px]">
                  {/* Background Glow */}
-                 <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/10 rounded-full blur-[100px] transition-opacity duration-1000 ${appState === AppState.TRAINING ? 'opacity-100' : 'opacity-30'}`} />
+                 <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/10 rounded-full blur-[100px] transition-opacity duration-1000 ${isTrainingActive ? 'opacity-100' : 'opacity-30'}`} />
                  
                  <div className="relative z-10 text-center space-y-2">
                    <h2 className="text-text-muted uppercase tracking-[0.2em] text-xs font-bold">Session Duration</h2>
@@ -719,9 +866,10 @@ const App: React.FC = () => {
 
               {/* Pitch Tracker */}
               <PitchTracker 
-                isActive={appState === AppState.TRAINING} 
+                isActive={isTrainingActive} 
                 targetPitch={settings.targetPitch || 220}
                 onTargetChange={(pitch) => setSettings({...settings, targetPitch: pitch})}
+                livePitchData={livePitchData}
               />
 
               {/* Audio Visualizer */}
@@ -735,7 +883,7 @@ const App: React.FC = () => {
                <PlanEditor 
                  plan={settings.trainingPlan} 
                  fontSize={settings.planFontSize || 16}
-                 isTraining={appState === AppState.TRAINING}
+                 isTraining={isTrainingActive}
                  onSave={(newPlan) => setSettings({...settings, trainingPlan: newPlan})}
                  onFontSizeChange={(size) => setSettings({...settings, planFontSize: size})}
                />
@@ -817,7 +965,7 @@ const App: React.FC = () => {
         isOpen={showHistory && settings.enableHistory}
         onClose={() => setShowHistory(false)}
         title="Session History"
-        width="max-w-2xl"
+        width="max-w-4xl"
       >
         <SessionHistory 
             sessions={sessions} 
@@ -835,6 +983,7 @@ const App: React.FC = () => {
       >
         <SettingsForm 
           settings={settings} 
+          appVersion={appVersion}
           onSave={(s) => { setSettings(s); setShowSettings(false); setStatusMessage("Settings saved."); }} 
           onReset={handleResetApp}
         />
@@ -884,7 +1033,7 @@ const App: React.FC = () => {
             <p>Customize your routine in the text editor on the right. Hit "Edit Plan" to make changes.</p>
           </div>
           <div className="pt-6 border-t border-text-muted/10 text-xs text-center font-mono opacity-50">
-            VoiceStride v1.0.0
+            VoiceStride v{appVersion}
           </div>
         </div>
       </Modal>

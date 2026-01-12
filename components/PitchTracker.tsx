@@ -1,14 +1,18 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { audioService } from '../services/audio';
 import { Activity, Target, Volume2 } from 'lucide-react';
+import { PitchGraph } from './PitchGraph';
+import { PitchDataPoint } from '../types';
 
 interface PitchTrackerProps {
   targetPitch: number;
   onTargetChange: (pitch: number) => void;
   isActive: boolean;
+  livePitchData: PitchDataPoint[];
 }
 
-export const PitchTracker: React.FC<PitchTrackerProps> = ({ targetPitch, onTargetChange, isActive }) => {
+export const PitchTracker: React.FC<PitchTrackerProps> = ({ targetPitch, onTargetChange, isActive, livePitchData }) => {
   const [pitch, setPitch] = useState<number>(0);
   const animationRef = useRef<number | null>(null);
   
@@ -36,7 +40,7 @@ export const PitchTracker: React.FC<PitchTrackerProps> = ({ targetPitch, onTarge
   }, []);
 
   const startTone = () => {
-    if (!ctxRef.current) {
+    if (!ctxRef.current || ctxRef.current.state === 'closed') {
         ctxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     const ctx = ctxRef.current;
@@ -88,6 +92,7 @@ export const PitchTracker: React.FC<PitchTrackerProps> = ({ targetPitch, onTarge
   useEffect(() => {
     if (!isActive) {
       setPitch(0);
+      historyRef.current = [];
       return;
     }
 
@@ -102,6 +107,8 @@ export const PitchTracker: React.FC<PitchTrackerProps> = ({ targetPitch, onTarge
         // Simple moving average
         const avg = history.reduce((a, b) => a + b, 0) / history.length;
         setPitch(avg);
+      } else {
+        setPitch(-1); // Use -1 for silence
       }
 
       animationRef.current = requestAnimationFrame(updatePitch);
@@ -131,7 +138,7 @@ export const PitchTracker: React.FC<PitchTrackerProps> = ({ targetPitch, onTarge
     if (!isActive) return 'Waiting to start';
     if (pitch <= 0) return 'Listening...';
     if (isGood) return 'Perfect!';
-    if (difference < 15) return pitch < targetPitch ? 'Too Low' : 'Too High';
+    if (difference < 15) return pitch < targetPitch ? 'Slightly Low' : 'Slightly High';
     return pitch < targetPitch ? 'Low' : 'High';
   };
 
@@ -173,7 +180,17 @@ export const PitchTracker: React.FC<PitchTrackerProps> = ({ targetPitch, onTarge
         </div>
       </div>
 
-      <div className="flex flex-col items-center justify-center py-2">
+      <div className="w-full h-[120px] bg-background/50 rounded-lg border border-white/5">
+        <PitchGraph 
+          data={livePitchData}
+          targetPitch={targetPitch}
+          height={120}
+          timeWindow={60000} // 60 seconds
+          isLive={true}
+        />
+      </div>
+
+      <div className="flex flex-col items-center justify-center pt-2">
          <div className={`text-5xl font-black tabular-nums tracking-tighter transition-colors duration-200 ${getColor()}`}>
            {pitch > 0 ? Math.round(pitch) : '--'}
            <span className="text-lg font-medium text-text-muted ml-1">Hz</span>

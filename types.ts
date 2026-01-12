@@ -1,3 +1,10 @@
+
+// FIX: Added and exported the PitchDataPoint interface, which was missing.
+export interface PitchDataPoint {
+  time: number;
+  pitch: number;
+}
+
 export interface TrainingSession {
   id: string;
   startTime: number;
@@ -5,6 +12,9 @@ export interface TrainingSession {
   duration: number; // in seconds
   notes?: string;
   recordingId?: string;
+  // FIX: Added optional pitchData and targetPitch properties to match usage in App.tsx.
+  pitchData?: PitchDataPoint[];
+  targetPitch?: number;
 }
 
 export interface Recording {
@@ -14,6 +24,9 @@ export interface Recording {
   duration: number;
   blob?: Blob; // In-memory blob for this session
   size: number;
+  // FIX: Added optional pitchData and targetPitch properties to match usage in App.tsx.
+  pitchData?: PitchDataPoint[];
+  targetPitch?: number;
 }
 
 export interface Goal {

@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Your custom variables go here */
+:root {
+  --bg-app: #ffffff; /* Example default, adjust as needed */
+  --bg-surface: #f3f4f6;
+  --col-primary: #3b82f6;
+  --col-primary-hover: #2563eb;
+  --col-secondary: #64748b;
+  --col-danger: #ef4444;
+  --text-main: #1e293b;
+  --text-muted: #94a3b8;
+}
+
+/* Dark mode variables (optional) */
+.dark {
+  --bg-app: #0f172a;
+  /* ... etc */
+}
+
+/* Your custom styles */
+body {
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent; 
+}
+::-webkit-scrollbar-thumb {
+  background: var(--text-muted); 
+  border-radius: 10px;
+  opacity: 0.3;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--col-primary); 
+}

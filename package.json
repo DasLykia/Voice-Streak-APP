@@ -6,30 +6,31 @@
   "main": "electron/main.js",
   "description": "Voice training and pitch tracking desktop app",
   "author": "Lykia",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/DasLykia/Voice-Streak-APP.git"
-  },
+  "repository": "https://github.com/DasLykia/Voice-Streak-APP",
   "scripts": {
     "dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build",
     "start": "electron .",
-    "dist": "npm run build && electron-builder"
+    "pack:win": "npm run build && electron-builder --dir --config.asar=true",
+    "make:release": "vpk pack --packId VoiceStride --packVersion 1.0.0 --packDir release/win-unpacked --mainExe VoiceStride.exe"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
     "electron-store": "^11.0.2",
-    "electron-updater": "^6.3.9",
     "lucide-react": "^0.562.0",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react-dom": "^19.2.3",
+    "velopack": "^0.0.1369-g1d5c984"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.4.23",
     "concurrently": "^9.2.1",
     "electron": "^39.2.7",
-    "electron-builder": "^26.0.12",
+    "electron-builder": "^26.4.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "wait-on": "^9.0.3"
@@ -37,13 +38,9 @@
   "build": {
     "appId": "com.voicestride.app",
     "productName": "VoiceStride",
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "Lykia",
-        "repo": "VoiceStride"
-      }
-    ],
+    "publish": {
+      "provider": "github"
+    },
     "directories": {
       "output": "release"
     },
@@ -53,24 +50,8 @@
       "build/icon.ico"
     ],
     "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
+      "target": "dir",
       "icon": "build/icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "VoiceStride",
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico"
     }
   }
 }
