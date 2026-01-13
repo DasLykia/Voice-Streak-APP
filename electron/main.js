@@ -3,16 +3,14 @@ import { app, BrowserWindow, ipcMain, Menu } from "electron";
 import path from "path";
 import { fileURLToPath } from "url";
 import Store from "electron-store";
-// fs is no longer needed since we removed the manual cleanup hook
-// import fs from "fs"; 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // --- VELOPACK SETUP ---
-// FIXED: Reverted to standard initialization to prevent the "not a function" error.
 VelopackApp.build().run();
 
+// Production URL (Specific to 1.0.2)
 const updateUrl = 'https://github.com/DasLykia/Voice-Streak-APP/releases/latest/download';
 
 // Initialize the store
@@ -56,8 +54,6 @@ function createWindow() {
     const indexHtml = path.join(__dirname, "../dist/index.html");
     win.loadFile(indexHtml);
   }
-
-  console.log("Electron window created. Dev mode:", !app.isPackaged);
 }
 
 // --- Velopack IPC Handlers ---
@@ -72,14 +68,9 @@ ipcMain.handle("velopack:get-version", () => {
 });
 
 ipcMain.handle("velopack:check-for-update", async () => {
-    try {
-        const um = new UpdateManager(updateUrl);
-        return await um.checkForUpdatesAsync();
-    } catch (e) {
-        console.error("Update check failed:", e);
-        // Return null to signal "no update found" or "check failed" cleanly
-        return null;
-    }
+    // No debug logs, just return the result
+    const um = new UpdateManager(updateUrl);
+    return await um.checkForUpdatesAsync();
 });
 
 ipcMain.handle("velopack:download-update", async (event, updateInfo) => {
@@ -90,7 +81,8 @@ ipcMain.handle("velopack:download-update", async (event, updateInfo) => {
 
 ipcMain.handle("velopack:apply-update", async (event, updateInfo) => {
     const um = new UpdateManager(updateUrl);
-    um.applyUpdateAndRestart(updateInfo);
+    await um.waitExitThenApplyUpdate(updateInfo); 
+    app.quit(); 
     return true;
 });
 

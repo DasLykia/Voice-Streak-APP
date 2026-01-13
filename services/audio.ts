@@ -1,3 +1,5 @@
+import { PitchDetector } from "pitchy";
+
 export class AudioService {
   private audioContext: AudioContext | null = null;
   private mediaStream: MediaStream | null = null;
@@ -6,6 +8,10 @@ export class AudioService {
   private analyserNode: AnalyserNode | null = null;
   private mediaRecorder: MediaRecorder | null = null;
   private chunks: Blob[] = [];
+  
+  // Pitchy specific properties
+  private pitchDetector: PitchDetector<Float32Array> | null = null;
+  private inputBuffer: Float32Array | null = null;
 
   async initialize(deviceId?: string): Promise<void> {
     if (this.audioContext) await this.close();
@@ -13,7 +19,15 @@ export class AudioService {
     this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     
     const constraints: MediaStreamConstraints = {
-      audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+      audio: deviceId ? { 
+        deviceId: { exact: deviceId },
+        // CRITICAL FIX: Disable all processing.
+        // This prevents the browser from treating sustained notes as "background noise"
+        // and cutting them off.
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false 
+      } : true,
       video: false
     };
 
@@ -22,13 +36,18 @@ export class AudioService {
       this.sourceNode = this.audioContext.createMediaStreamSource(this.mediaStream);
       this.gainNode = this.audioContext.createGain();
       this.analyserNode = this.audioContext.createAnalyser();
-      this.analyserNode.fftSize = 2048; // Increased for better pitch resolution
+      
+      // CRITICAL FIX: Increased to 4096. 
+      // Larger buffer = More stability for sustained notes.
+      this.analyserNode.fftSize = 4096; 
       
       this.sourceNode.connect(this.gainNode);
       this.gainNode.connect(this.analyserNode);
       
-      // We don't connect to destination to avoid feedback loop unless we want monitoring
-      // this.gainNode.connect(this.audioContext.destination); 
+      // Initialize Pitchy Detector
+      this.inputBuffer = new Float32Array(this.analyserNode.fftSize);
+      this.pitchDetector = PitchDetector.forFloat32Array(this.analyserNode.fftSize);
+      
     } catch (err) {
       console.error("Error initializing audio:", err);
       throw err;
@@ -45,63 +64,44 @@ export class AudioService {
     return this.analyserNode;
   }
 
-  // Basic Pitch Detection using Autocorrelation
+  // Improved Pitch Detection using Pitchy (MPM Algorithm)
   getPitch(): number {
-    if (!this.analyserNode || !this.audioContext) return -1;
+    // 1. Create local references to satisfy TypeScript null checks
+    const analyser = this.analyserNode;
+    const ctx = this.audioContext;
+    const detector = this.pitchDetector;
+    const buffer = this.inputBuffer;
 
-    const bufferLength = this.analyserNode.fftSize;
-    const buffer = new Float32Array(bufferLength);
-    this.analyserNode.getFloatTimeDomainData(buffer);
-    const sampleRate = this.audioContext.sampleRate;
+    // 2. Check if everything is ready
+    if (!analyser || !ctx || !detector || !buffer) return -1;
 
-    // Calculate RMS to detect silence
+    // 3. Get audio data using the local buffer reference
+    // FIXED: Added 'as any' to bypass TypeScript's ArrayBuffer vs ArrayBufferLike mismatch
+    analyser.getFloatTimeDomainData(buffer as any);
+    
+    // 4. Calculate Volume (RMS) to ignore silence
     let rms = 0;
-    for (let i = 0; i < bufferLength; i++) {
+    for (let i = 0; i < buffer.length; i++) {
       rms += buffer[i] * buffer[i];
     }
-    rms = Math.sqrt(rms / bufferLength);
-    if (rms < 0.01) return -1; // Signal too weak/silence
-
-    // Autocorrelation
-    // Trim signal to significant part
-    let r1 = 0, r2 = bufferLength - 1, thres = 0.2;
-    for (let i = 0; i < bufferLength / 2; i++)
-      if (Math.abs(buffer[i]) < thres) { r1 = i; break; }
-    for (let i = 1; i < bufferLength / 2; i++)
-      if (Math.abs(buffer[bufferLength - i]) < thres) { r2 = bufferLength - i; break; }
-
-    const buf = buffer.slice(r1, r2);
-    const size = buf.length;
-    const c = new Array(size).fill(0);
+    rms = Math.sqrt(rms / buffer.length);
     
-    // Auto-correlate
-    for (let i = 0; i < size; i++) {
-      for (let j = 0; j < size - i; j++) {
-        c[i] = c[i] + buf[j] * buf[j + i];
-      }
-    }
+    // TWEAK: Very low threshold to catch soft singing/speaking
+    if (rms < 0.005) return -1; 
 
-    // Find first peak
-    let d = 0;
-    while (c[d] > c[d + 1]) d++;
-    let maxval = -1, maxpos = -1;
-    for (let i = d; i < size; i++) {
-      if (c[i] > maxval) {
-        maxval = c[i];
-        maxpos = i;
-      }
-    }
-    let T0 = maxpos;
+    // 5. Find Pitch using Pitchy
+    const [pitch, clarity] = detector.findPitch(buffer, ctx.sampleRate);
 
-    // Parabolic interpolation for better precision
-    const x1 = c[T0 - 1];
-    const x2 = c[T0];
-    const x3 = c[T0 + 1];
-    const a = (x1 + x3 - 2 * x2) / 2;
-    const b = (x3 - x1) / 2;
-    if (a) T0 = T0 - b / (2 * a);
+    // 6. Clarity Filter
+    // "S" and "T" sounds are noise and usually represent < 0.3 clarity.
+    // TWEAK: Lowered to 0.5. This allows "breathier" or "jittery" sustained notes 
+    // to pass through, but still blocks pure noise.
+    if (clarity < 0.5) return -1;
 
-    return sampleRate / T0;
+    // 7. Sanity Check
+    if (pitch < 50 || pitch > 3000) return -1;
+
+    return pitch;
   }
 
   startRecording() {
@@ -165,6 +165,8 @@ export class AudioService {
     this.gainNode = null;
     this.analyserNode = null;
     this.mediaRecorder = null;
+    this.pitchDetector = null;
+    this.inputBuffer = null;
   }
 
   static async getDevices(): Promise<MediaDeviceInfo[]> {

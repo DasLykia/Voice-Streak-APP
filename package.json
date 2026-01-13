@@ -1,6 +1,6 @@
 {
   "name": "voicestride",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "type": "module",
   "main": "electron/main.js",
@@ -12,12 +12,13 @@
     "build": "vite build",
     "start": "electron .",
     "pack:win": "npm run build && electron-builder --dir --config.asar=true",
-    "make:release": "vpk pack --packId VoiceStride --packVersion 1.0.0 --packDir release/win-unpacked --mainExe VoiceStride.exe"
+    "make:release": "vpk pack --packId VoiceStride --packVersion 1.0.3 --packDir release/win-unpacked --mainExe VoiceStride.exe"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
     "electron-store": "^11.0.2",
     "lucide-react": "^0.562.0",
+    "pitchy": "^4.1.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "velopack": "^0.0.1369-g1d5c984"
