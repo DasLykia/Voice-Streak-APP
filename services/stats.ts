@@ -1,109 +1,132 @@
+
 export const calculateStreaks = (
-  history: { [date: string]: boolean },
-  sickDays: { [date: string]: boolean }
+  history: { [date: string]: boolean | number },
+  sickDays: { [date: string]: boolean },
+  schedule: number[] = [] // 0=Sun, 1=Mon...
 ): { currentStreak: number; longestStreak: number } => {
-  // Normalize all dates to Local YYYY-MM-DD strings to ensure consistency
-  // regardless of how they were stored (toDateString vs YYYY-MM-DD)
-  const normalizeDate = (dateStr: string): string => {
-    const d = new Date(dateStr);
-    // Handle "Invalid Date" gracefully if happens
-    if (isNaN(d.getTime())) return "";
-    
-    // Construct local YYYY-MM-DD
+  
+  const normalizeDate = (d: Date): string => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
-  const activeDates = new Set<string>();
+  const hasTraining = (dateStr: string) => !!history[dateStr];
+  const isSick = (dateStr: string) => !!sickDays[dateStr];
+  
+  const isScheduled = (date: Date) => {
+      // If schedule is empty, we assume the user hasn't configured it.
+      // Defaulting to "Every day is a training day" ensures standard streak behavior (must train daily).
+      // If we defaulted to "No days are training days", the streak would never break, which is confusing.
+      if (schedule.length === 0) return true; 
+      
+      const day = date.getDay(); // 0 Sun, 1 Mon...
+      return schedule.includes(day);
+  };
 
-  // Process history
-  Object.keys(history).forEach(d => {
-    const norm = normalizeDate(d);
-    if (norm) activeDates.add(norm);
-  });
+  const subDays = (d: Date, n: number) => {
+      const newD = new Date(d);
+      newD.setDate(d.getDate() - n);
+      return newD;
+  };
 
-  // Process sick days
-  Object.keys(sickDays).forEach(d => {
-    const norm = normalizeDate(d);
-    if (norm) activeDates.add(norm);
-  });
+  const addDays = (d: Date, n: number) => {
+      const newD = new Date(d);
+      newD.setDate(d.getDate() + n);
+      return newD;
+  };
 
-  // Convert to timestamps (Local Midnight) for sorting/math
-  // We treat the string "YYYY-MM-DD" as if it is local time 00:00:00
-  const sortedDates = Array.from(activeDates).sort(); // Lexicographical sort works for YYYY-MM-DD
-
-  if (sortedDates.length === 0) {
-    return { currentStreak: 0, longestStreak: 0 };
+  // --- 1. Current Streak ---
+  let currentStreak = 0;
+  let pointer = new Date(); // Start Today
+  
+  // If today is a training day and we haven't trained yet, it shouldn't break the streak from yesterday.
+  // So we first check if today counts.
+  
+  const todayStr = normalizeDate(pointer);
+  
+  if (hasTraining(todayStr)) {
+      currentStreak = 1;
   }
+  
+  // Move pointer to yesterday to start checking history
+  pointer = subDays(pointer, 1);
 
-  // 1. Calculate Longest Streak
-  let maxStreak = 0;
-  let tempStreak = 0;
-  let prevDate: Date | null = null;
-
-  for (const dateStr of sortedDates) {
-    // Parse manually to avoid UTC conversion issues with new Date("YYYY-MM-DD")
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const currentDate = new Date(y, m - 1, d);
-
-    if (tempStreak === 0) {
-      tempStreak = 1;
-    } else if (prevDate) {
-      const diffTime = Math.abs(currentDate.getTime() - prevDate.getTime());
-      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 1) {
-        tempStreak++;
+  // Safety break
+  let safety = 0;
+  while (safety < 5000) { // Look back approx 13 years max
+      safety++;
+      const pStr = normalizeDate(pointer);
+      
+      if (hasTraining(pStr)) {
+          currentStreak++;
       } else {
-        if (tempStreak > maxStreak) maxStreak = tempStreak;
-        tempStreak = 1;
+          // No training on this day.
+          if (isSick(pStr)) {
+              // Sick Day: Bridges the gap. Streak continues.
+          } else if (!isScheduled(pointer)) {
+              // Off Day: Bridges the gap. Streak continues.
+          } else {
+              // It was a Scheduled day, Not Sick, and No Training.
+              // Streak is broken.
+              break;
+          }
       }
-    }
-    prevDate = currentDate;
+      pointer = subDays(pointer, 1);
   }
+
+  // --- 2. Longest Streak ---
+  // To find the longest streak, we must scan the entire relevant timeline.
+  // We find the min and max dates from history to define the range.
+  
+  const allDates = [...Object.keys(history), ...Object.keys(sickDays)].sort();
+  if (allDates.length === 0) return { currentStreak, longestStreak: currentStreak };
+
+  const firstDateStr = allDates[0];
+  const lastDateStr = allDates[allDates.length - 1]; // Or Today? Let's use Today to capture current streak potentially.
+  
+  // Parse start date
+  const [sy, sm, sd] = firstDateStr.split('-').map(Number);
+  let scanPointer = new Date(sy, sm - 1, sd);
+  
+  // End date is Today
+  const endPointer = new Date();
+  endPointer.setHours(0,0,0,0);
+
+  let tempStreak = 0;
+  let maxStreak = 0;
+  
+  safety = 0;
+  // Scan forward from first activity to today
+  while (scanPointer <= endPointer && safety < 10000) {
+      safety++;
+      const pStr = normalizeDate(scanPointer);
+      
+      if (hasTraining(pStr)) {
+          tempStreak++;
+      } else {
+          if (isSick(pStr) || !isScheduled(scanPointer)) {
+              // Bridge day, keep streak alive but don't increment? 
+              // Actually, usually "Streak" is count of consecutive actions.
+              // If I train Mon (1), Tue Off, Wed (1), is my streak 2 or 3?
+              // Most trackers count the span of days where you adhered to schedule.
+              // But here we'll stick to "Count of Sessions in Streak" logic for consistency with currentStreak logic above.
+              // Wait, above `currentStreak` increments ONLY on training.
+              // So if Mon(Train), Tue(Off), Wed(Train) -> Streak is 2.
+              // This is consistent.
+          } else {
+              // Broken
+              if (tempStreak > maxStreak) maxStreak = tempStreak;
+              tempStreak = 0;
+          }
+      }
+      scanPointer = addDays(scanPointer, 1);
+  }
+  
   if (tempStreak > maxStreak) maxStreak = tempStreak;
 
-  // 2. Calculate Current Streak
-  const today = new Date();
-  const todayStr = normalizeDate(today.toDateString());
-  
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = normalizeDate(yesterday.toDateString());
-
-  let currentStreak = 0;
-  // Streak is valid if it includes Today OR Yesterday (if we haven't trained today yet)
-  let tailDateStr = "";
-
-  if (activeDates.has(todayStr)) {
-    tailDateStr = todayStr;
-  } else if (activeDates.has(yesterdayStr)) {
-    tailDateStr = yesterdayStr;
-  }
-
-  if (tailDateStr) {
-    currentStreak = 1;
-    let [y, m, d] = tailDateStr.split('-').map(Number);
-    let checkDate = new Date(y, m - 1, d);
-
-    // Count backwards
-    while (true) {
-      checkDate.setDate(checkDate.getDate() - 1);
-      const year = checkDate.getFullYear();
-      const month = String(checkDate.getMonth() + 1).padStart(2, '0');
-      const day = String(checkDate.getDate()).padStart(2, '0');
-      const checkStr = `${year}-${month}-${day}`;
-
-      if (activeDates.has(checkStr)) {
-        currentStreak++;
-      } else {
-        break;
-      }
-    }
-  }
-
+  // Ensure longest is at least current
   if (currentStreak > maxStreak) maxStreak = currentStreak;
 
   return { currentStreak, longestStreak: maxStreak };

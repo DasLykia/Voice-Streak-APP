@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Recording } from '../types';
-import { Trash2, Play, Pause, Search, Calendar, Volume2, CheckSquare, Square, Eye, EyeOff } from 'lucide-react';
+import { Recording, TrainingSession } from '../types';
+import { Trash2, Play, Pause, Search, Calendar, Volume2, CheckSquare, Square, Eye, EyeOff, FileText } from 'lucide-react';
 import { Button } from './Button';
 import { getAudioBlob } from '../services/storage';
 import { PitchGraph } from './PitchGraph';
@@ -9,9 +9,14 @@ import { PitchGraph } from './PitchGraph';
 interface RecordingsManagerProps {
   recordings: Recording[];
   onDelete: (id: string) => void;
+  highlightedId?: string | null;
+  onJumpToSession?: (sessionId: string) => void;
+  sessions?: TrainingSession[];
 }
 
-export const RecordingsManager: React.FC<RecordingsManagerProps> = ({ recordings, onDelete }) => {
+export const RecordingsManager: React.FC<RecordingsManagerProps> = ({ 
+    recordings, onDelete, highlightedId, onJumpToSession, sessions 
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -36,7 +41,6 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({ recordings
     }
     audioRef.current.volume = volume;
     
-    // Cleanup audio on unmount
     return () => {
         if(audioRef.current) {
             audioRef.current.pause();
@@ -44,6 +48,22 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({ recordings
         }
     }
   }, [volume]);
+
+  // Handle highlighting
+  useEffect(() => {
+      if (highlightedId) {
+          const rec = recordings.find(r => r.id === highlightedId);
+          if (rec) {
+              setSearchTerm(rec.filename); // Filter to find it easily
+              handlePlay(rec); // Auto play
+              // Scroll logic
+              setTimeout(() => {
+                  const el = document.getElementById(`recording-${highlightedId}`);
+                  if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }, 100);
+          }
+      }
+  }, [highlightedId]);
 
   const handlePlay = async (rec: Recording) => {
     if (!audioRef.current) return;
@@ -98,7 +118,7 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({ recordings
     const newTime = seekRatio * duration;
 
     audioRef.current.currentTime = newTime;
-    setPlaybackTime(newTime * 1000); // Update state immediately for better responsiveness
+    setPlaybackTime(newTime * 1000); 
   };
 
   const filtered = recordings
@@ -143,6 +163,10 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({ recordings
         selectedIds.forEach(id => onDelete(id));
         setSelectedIds(new Set());
     }
+  };
+
+  const findSessionForRecording = (recId: string) => {
+      return sessions?.find(s => s.recordingId === recId);
   };
 
   return (
@@ -213,12 +237,14 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({ recordings
             const isSelected = selectedIds.has(rec.id);
             const isPlaying = playingId === rec.id;
             const hasGraphData = rec.pitchData && rec.pitchData.length > 0;
+            const linkedSession = findSessionForRecording(rec.id);
+
             return (
-                <div key={rec.id}> 
+                <div key={rec.id} id={`recording-${rec.id}`}> 
                     <div 
                         className={`flex items-center justify-between p-3 border transition-all duration-200 ${isSelected ? 'bg-primary/10 border-primary/30' : 'bg-surface border-white/5 hover:border-white/10'} ${isPlaying ? 'rounded-t-lg border-b-0' : 'rounded-lg'}`}
                     >
-                        <div className="flex items-center gap-4 overflow-hidden">
+                        <div className="flex items-center gap-4 overflow-hidden flex-1">
                             <button 
                                 onClick={() => toggleSelection(rec.id)}
                                 className={`shrink-0 transition-colors ${isSelected ? 'text-primary' : 'text-text-muted hover:text-text'}`}
@@ -234,19 +260,32 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({ recordings
                             >
                             {isPlaying ? <Pause size={18} /> : <Play size={18} />}
                             </Button>
-                            <div className="min-w-0">
-                            <div className={`font-medium truncate ${isSelected ? 'text-primary' : ''}`}>{rec.filename}</div>
-                            <div className="text-xs text-text-muted flex items-center gap-2">
-                                <Calendar size={12} />
-                                {formatDate(rec.date)}
-                                <span className="w-1 h-1 bg-text-muted rounded-full" />
-                                {formatSeconds(rec.duration)}
-                            </div>
+                            <div className="min-w-0 flex-1">
+                                <div className={`font-medium truncate ${isSelected ? 'text-primary' : ''}`}>{rec.filename}</div>
+                                <div className="text-xs text-text-muted flex items-center gap-2">
+                                    <Calendar size={12} />
+                                    {formatDate(rec.date)}
+                                    <span className="w-1 h-1 bg-text-muted rounded-full" />
+                                    {formatSeconds(rec.duration)}
+                                </div>
                             </div>
                         </div>
-                        <Button size="icon" variant="ghost" className="text-danger hover:bg-danger/10 hover:text-danger shrink-0" onClick={() => handleDelete(rec.id)}>
-                            <Trash2 size={18} />
-                        </Button>
+                        
+                        <div className="flex items-center gap-2">
+                            {linkedSession && onJumpToSession && (
+                                <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    onClick={() => onJumpToSession(linkedSession.id)}
+                                    title="View Session History"
+                                >
+                                    <FileText size={18} />
+                                </Button>
+                            )}
+                            <Button size="icon" variant="ghost" className="text-danger hover:bg-danger/10 hover:text-danger shrink-0" onClick={() => handleDelete(rec.id)}>
+                                <Trash2 size={18} />
+                            </Button>
+                        </div>
                     </div>
 
                     {isPlaying && (

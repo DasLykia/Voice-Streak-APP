@@ -1,6 +1,42 @@
-import { AppSettings, UserStats, Achievement } from './types';
 
-export const DEFAULT_PLAN = `(Default Plan)
+
+import { AppSettings, UserStats, Achievement, Routine, ColorTheme, LevelReward } from './types';
+
+// Theme Definitions
+export const THEMES: Record<ColorTheme, { name: string; primary: string; secondary: string; unlockLevel: number }> = {
+  violet: { name: 'Violet', primary: '#8b5cf6', secondary: '#10b981', unlockLevel: 1 }, 
+  emerald: { name: 'Emerald', primary: '#10b981', secondary: '#3b82f6', unlockLevel: 1 },
+  rose: { name: 'Rose', primary: '#f43f5e', secondary: '#8b5cf6', unlockLevel: 5 },
+  amber: { name: 'Amber', primary: '#f59e0b', secondary: '#ef4444', unlockLevel: 10 },
+  blue: { name: 'Blue', primary: '#3b82f6', secondary: '#8b5cf6', unlockLevel: 15 },
+  midnight: { name: 'Midnight', primary: '#6366f1', secondary: '#a855f7', unlockLevel: 25 },
+  neon: { name: 'Neon', primary: '#d946ef', secondary: '#06b6d4', unlockLevel: 35 },
+  custom: { name: 'Grand Master', primary: '#ffffff', secondary: '#ffffff', unlockLevel: 50 }, // Dynamic
+};
+
+export const LEVEL_REWARDS: LevelReward[] = [
+  { level: 5, type: 'theme', label: 'Rose Theme', value: 'rose', description: 'Unlock the passionate Rose color theme.' },
+  { level: 10, type: 'theme', label: 'Amber Theme', value: 'amber', description: 'Unlock the energetic Amber color theme.' },
+  { level: 15, type: 'theme', label: 'Blue Theme', value: 'blue', description: 'Unlock the calm Blue color theme.' },
+  { level: 25, type: 'theme', label: 'Midnight Theme', value: 'midnight', description: 'Unlock the deep Midnight color theme.' },
+  { level: 35, type: 'theme', label: 'Neon Theme', value: 'neon', description: 'Unlock the vibrant Neon color theme.' },
+  { level: 50, type: 'badge', label: 'Grand Master', description: 'Earn the Grand Master status badge and a special reward.' },
+];
+
+export const DEFAULT_ROUTINE: Routine = {
+  id: 'default',
+  name: 'Daily Fundamentals',
+  blocks: [
+    { id: '1', title: 'Diaphragmatic Breathing', duration: 180, description: 'Breathe in for 4s, hold for 4s, out for 6s. Hand on belly.' },
+    { id: '2', title: 'Lip Trills (Warmup)', duration: 180, description: 'Gentle lip trills in a comfortable range to relax the lips.' },
+    { id: '3', title: 'Pitch Slides', duration: 300, description: 'Slide from your comfortable low to high note and back down smoothly.' },
+    { id: '4', title: 'Sustain Practice', duration: 300, description: 'Hold a steady note at your target pitch for as long as comfortable.' },
+    { id: '5', title: 'Resonance Humming', duration: 240, description: 'Focus on "M" sounds, feeling the vibration in the front of your face.' },
+    { id: '6', title: 'Cool Down', duration: 120, description: 'Gentle descending glides or soft humming.' }
+  ]
+};
+
+export const DEFAULT_PLAN_TEXT = `(Default Plan)
 Daily Plan (30-45 minutes)
 
 1. Warm-up (5-10 minutes)
@@ -49,22 +85,33 @@ Important Notes on the provided documents:
 - Safety: Prioritize safety by avoiding overdoing it and paying attention to your body.
 - Consistency is KEY: Just as the documents mention, keep doing the excercise everyday and record the progress.`;
 
+
 export const DEFAULT_SESSION_FOCUS = "Remember to maintain good posture. Keep your shoulders relaxed and breathe from your diaphragm.\nHydrate frequently!";
 
 export const DEFAULT_SETTINGS: AppSettings = {
   userName: 'Vocalist',
-  trainingDays: [1, 2, 3, 4, 5], // Mon-Fri
+  trainingDays: [], // Default to 0 days so user sets it themselves
   enableRecording: true,
   inputDeviceId: 'default',
   outputDeviceId: 'default',
   micGain: 1.0,
-  trainingPlan: DEFAULT_PLAN,
+  
+  planMode: 'structured',
+  currentRoutine: DEFAULT_ROUTINE,
+  simplePlanText: DEFAULT_PLAN_TEXT,
+  
   sessionFocus: DEFAULT_SESSION_FOCUS,
   theme: 'dark',
-  planFontSize: 12,
-  targetPitch: 261, // Middle C (C4)
+  colorTheme: 'violet',
+  planFontSize: 14,
+  targetPitch: 261, // Middle C
   deleteSessionWithRecording: false,
   checkUpdatesOnStartup: true,
+  retainAnalytics: true,
+  
+  beepVolume: 0.5,
+  skipPreflight: false,
+  disableLeveling: false,
   
   // Feature Defaults
   enableHistory: true,
@@ -80,48 +127,63 @@ export const INITIAL_STATS: UserStats = {
   currentStreak: 0,
   lastTrainingDate: null,
   history: {},
+  sessionCounts: {},
+  healthTrends: [],
   sickDays: {},
-  unlockedAchievements: []
+  unlockedAchievements: [],
+  goalHistory: [],
+  xp: 0,
+  level: 1
 };
 
 export const STORAGE_KEYS = {
-  SETTINGS: 'voicestride_settings',
-  STATS: 'voicestride_stats',
+  SETTINGS: 'voicestride_settings_v3',
+  STATS: 'voicestride_stats_v3', 
   RECORDINGS: 'voicestride_recordings_meta',
-  SESSIONS: 'voicestride_sessions',
+  SESSIONS: 'voicestride_sessions_v2',
   GOALS: 'voicestride_goals',
   SETUP: 'voicestride_setup',
+  WELCOME_SHOWN: 'voicestride_welcome_shown'
 };
-
-
 
 export const ACHIEVEMENTS_LIST: Achievement[] = [
   {
     id: 'first_step',
     title: 'First Step',
     description: 'Complete your first training session.',
-    icon: 'Kv',
+    icon: 'Footprints',
     condition: (stats) => stats.totalSessions >= 1
   },
   {
     id: 'consistency_week',
     title: 'Consistent',
     description: 'Reach a 7-day streak.',
-    icon: 'Fe',
+    icon: 'Flame',
     condition: (stats) => stats.currentStreak >= 7
   },
   {
     id: 'marathoner',
     title: 'Marathoner',
-    description: 'Accumulate 10 hours of total practice.',
-    icon: 'Au',
+    description: 'Complete a session longer than 20 minutes.',
+    icon: 'Timer',
+    condition: (stats, sessions) => sessions.some(s => s.duration >= 1200)
+  },
+  {
+    id: 'centurion',
+    title: 'Centurion',
+    description: 'Reach 10 total hours of training.',
+    icon: 'Shield',
     condition: (stats) => stats.totalTrainingTime >= 36000
   },
   {
     id: 'dedicated',
     title: 'Dedicated',
     description: 'Complete 50 sessions.',
-    icon: 'Zr',
+    icon: 'Trophy',
     condition: (stats) => stats.totalSessions >= 50
   }
 ];
+
+export const XP_PER_MINUTE = 10;
+export const XP_PER_SESSION = 100; // Increased base
+export const XP_LEVEL_BASE = 1000;

@@ -5,7 +5,7 @@ import { PitchDataPoint } from '../types';
 interface PitchGraphProps {
   data: PitchDataPoint[];
   targetPitch?: number;
-  height?: number;
+  height?: number | string; // Allow flexible height
   timeWindow?: number; // in ms
   currentTime?: number; // in ms for playback cursor
   isLive?: boolean;
@@ -41,16 +41,12 @@ export const PitchGraph: React.FC<PitchGraphProps> = ({
     const container = containerRef.current;
     if (!canvas || !ctx || !container) return;
     
-    // For non-scrollable, fit to container width on resize
+    // For non-scrollable, fit to container width/height on resize
     if (!isScrollable) {
       const resizeObserver = new ResizeObserver(() => {
-        // Trigger a re-render by updating a dummy state or by re-calling the draw logic
-        // This is simplified here; a state update would be more robust.
         drawGraph();
       });
       resizeObserver.observe(container);
-      
-      // Cleanup
       return () => resizeObserver.disconnect();
     }
   }, [isScrollable]);
@@ -63,17 +59,19 @@ export const PitchGraph: React.FC<PitchGraphProps> = ({
     if (!canvas || !ctx || !container) return;
 
     const devicePixelRatio = window.devicePixelRatio || 1;
+    
     const currentWidth = isScrollable ? canvasWidth : container.clientWidth;
+    const currentHeight = container.clientHeight || (typeof height === 'number' ? height : 150);
 
     canvas.width = currentWidth * devicePixelRatio;
-    canvas.height = height * devicePixelRatio;
+    canvas.height = currentHeight * devicePixelRatio;
     canvas.style.width = `${currentWidth}px`;
-    canvas.style.height = `${height}px`;
+    canvas.style.height = `${currentHeight}px`;
     
     ctx.scale(devicePixelRatio, devicePixelRatio);
 
     const graphWidth = currentWidth - PADDING.left - PADDING.right;
-    const graphHeight = height - PADDING.top - PADDING.bottom;
+    const graphHeight = currentHeight - PADDING.top - PADDING.bottom;
 
     const now = data.length > 0 ? data[data.length - 1].time : 0;
     const timeMin = isLive ? Math.max(0, now - timeWindow) : 0;
@@ -82,7 +80,7 @@ export const PitchGraph: React.FC<PitchGraphProps> = ({
     const toX = (time: number) => PADDING.left + ((time - timeMin) / (timeMax - timeMin)) * graphWidth;
     const toY = (pitch: number) => PADDING.top + graphHeight - ((Math.max(0, pitch) - PITCH_MIN) / (PITCH_MAX - PITCH_MIN)) * graphHeight;
 
-    ctx.clearRect(0, 0, currentWidth, height);
+    ctx.clearRect(0, 0, currentWidth, currentHeight);
     
     const style = getComputedStyle(document.documentElement);
     const mutedColor = style.getPropertyValue('--text-muted').trim();
@@ -171,7 +169,7 @@ export const PitchGraph: React.FC<PitchGraphProps> = ({
     <div
       ref={containerRef}
       className={`${containerClassName || ''} ${isScrollable ? 'overflow-x-auto custom-scrollbar' : 'overflow-hidden'}`}
-      style={{ height: `${height}px` }}
+      style={{ height: typeof height === 'number' ? `${height}px` : height }}
     >
       <canvas ref={canvasRef} />
     </div>
