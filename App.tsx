@@ -1048,7 +1048,7 @@ const App: React.FC = () => {
         <header className="h-14 flex items-center justify-between px-6 border-b border-border bg-surface/50 backdrop-blur-sm shrink-0 z-40">
            <div className="flex items-center gap-4">
               <div className="flex flex-col">
-                 <h1 className="font-bold text-sm leading-tight tracking-tight text-text">VoiceStride <span className="text-primary text-xs align-top">v{appVersion}</span></h1>
+                 <h1 className="font-bold text-sm leading-tight tracking-tight text-text">Resona <span className="text-primary text-xs align-top">v{appVersion}</span></h1>
                  <span className="text-[10px] font-mono text-text-muted uppercase tracking-widest">{statusMessage}</span>
               </div>
            </div>
@@ -1318,7 +1318,7 @@ const App: React.FC = () => {
         </div>
       </Modal>
 
-      <Modal isOpen={showWelcome} onClose={() => setShowWelcome(false)} title="Welcome to VoiceStride!" width="max-w-lg">
+      <Modal isOpen={showWelcome} onClose={() => setShowWelcome(false)} title="Welcome to Resona!" width="max-w-lg">
         <div className="p-2 space-y-4">
             <div className="flex justify-center mb-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">

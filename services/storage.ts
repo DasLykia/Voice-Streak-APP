@@ -20,7 +20,7 @@ export const saveToStorage = <T,>(key: string, value: T): void => {
 };
 
 // Simple wrapper for IndexedDB to store audio blobs
-const DB_NAME = 'VoiceStrideDB';
+const DB_NAME = 'ResonaDB';
 const STORE_NAME = 'recordings';
 
 const openDB = (): Promise<IDBDatabase> => {

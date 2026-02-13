@@ -1,19 +1,19 @@
 {
-  "name": "voicestride",
+  "name": "resona",
   "version": "1.0.5",
   "private": true,
   "type": "module",
   "main": "electron/main.js",
   "description": "Voice training and pitch tracking desktop app",
   "author": "Lykia",
-  "repository": "https://github.com/DasLykia/Voice-Streak-APP",
+  "repository": "https://github.com/DasLykia/Resona",
   "scripts": {
     "dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build",
     "start": "electron .",
     "win:build": "npm run pack:win && npm run make:release",
     "pack:win": "npm run build && electron-builder --dir --config.asar=true",
-    "make:release": "vpk pack --packId VoiceStride --packVersion 1.0.5 --packDir Releases/win-unpacked --mainExe VoiceStride.exe --outputDir Releases",
+    "make:release": "vpk pack --packId Resona --packVersion 1.0.5 --packDir Releases/win-unpacked --mainExe Resona.exe --outputDir Releases",
     "releases": "npm run win:build"
   },
   "dependencies": {
@@ -42,8 +42,8 @@
     "wait-on": "^9.0.3"
   },
   "build": {
-    "appId": "com.voicestride.app",
-    "productName": "VoiceStride",
+    "appId": "com.resona.app",
+    "productName": "Resona",
     "publish": {
       "provider": "github"
     },

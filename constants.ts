@@ -165,13 +165,13 @@ export const INITIAL_STATS: UserStats = {
 };
 
 export const STORAGE_KEYS = {
-  SETTINGS: 'voicestride_settings_v3',
-  STATS: 'voicestride_stats_v3', 
-  RECORDINGS: 'voicestride_recordings_meta',
-  SESSIONS: 'voicestride_sessions_v2',
-  GOALS: 'voicestride_goals',
-  SETUP: 'voicestride_setup',
-  WELCOME_SHOWN: 'voicestride_welcome_shown'
+  SETTINGS: 'resona_settings_v3',
+  STATS: 'resona_stats_v3', 
+  RECORDINGS: 'resona_recordings_meta',
+  SESSIONS: 'resona_sessions_v2',
+  GOALS: 'resona_goals',
+  SETUP: 'resona_setup',
+  WELCOME_SHOWN: 'resona_welcome_shown'
 };
 
 export const ACHIEVEMENTS_LIST: Achievement[] = [

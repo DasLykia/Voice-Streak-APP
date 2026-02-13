@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 VelopackApp.build().run();
 
 // Production URL (Specific to 1.0.2)
-const updateUrl = 'https://github.com/DasLykia/Voice-Streak-APP/releases/latest/download';
+const updateUrl = 'https://github.com/DasLykia/Resona/releases/latest/download';
 
 // Initialize the store
 const store = new Store();
