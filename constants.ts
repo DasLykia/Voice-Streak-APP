@@ -1,5 +1,4 @@
 
-
 import { AppSettings, UserStats, Achievement, Routine, ColorTheme, LevelReward } from './types';
 
 // Theme Definitions
@@ -25,19 +24,48 @@ export const LEVEL_REWARDS: LevelReward[] = [
 
 export const DEFAULT_ROUTINE: Routine = {
   id: 'default',
-  name: 'Daily Fundamentals',
+  name: 'Daily Vocal Tutorial',
   blocks: [
-    { id: '1', title: 'Diaphragmatic Breathing', duration: 180, description: 'Breathe in for 4s, hold for 4s, out for 6s. Hand on belly.' },
-    { id: '2', title: 'Lip Trills (Warmup)', duration: 180, description: 'Gentle lip trills in a comfortable range to relax the lips.' },
-    { id: '3', title: 'Pitch Slides', duration: 300, description: 'Slide from your comfortable low to high note and back down smoothly.' },
-    { id: '4', title: 'Sustain Practice', duration: 300, description: 'Hold a steady note at your target pitch for as long as comfortable.' },
-    { id: '5', title: 'Resonance Humming', duration: 240, description: 'Focus on "M" sounds, feeling the vibration in the front of your face.' },
-    { id: '6', title: 'Cool Down', duration: 120, description: 'Gentle descending glides or soft humming.' }
+    { 
+      id: '1', 
+      title: 'Diaphragmatic Breathing', 
+      duration: 180, 
+      description: '3x breaths: In nose (4s), Hold (4s), Out mouth (6s). Focus on belly expansion.' 
+    },
+    { 
+      id: '2', 
+      title: 'Lip Trills (SOVTE)', 
+      duration: 180, 
+      description: 'Relax cheeks/lips. Make a gentle "brrr" motorboat sound. Keep airflow steady, no straining.' 
+    },
+    { 
+      id: '3', 
+      title: 'Pitch Matching', 
+      duration: 300, 
+      description: 'Use the pitch tracker. Aim for your target (e.g., C4). Match the pitch shown on screen.' 
+    },
+    { 
+      id: '4', 
+      title: 'Scales on SOVTEs', 
+      duration: 300, 
+      description: 'Perform lip trills or use a straw while sliding through a comfortable scale. Focus on smooth transitions.' 
+    },
+    { 
+      id: '5', 
+      title: 'Big Dog / Small Dog', 
+      duration: 300, 
+      description: 'Resonance: Pant like a big dog (dark/low larynx), then a small dog (bright/high larynx). Aim for the small dog sensation.' 
+    },
+    { 
+      id: '6', 
+      title: 'Cool Down', 
+      duration: 180, 
+      description: 'Gentle humming or soft lip trills at a comfortable, low pitch to relax the vocal cords.' 
+    }
   ]
 };
 
-export const DEFAULT_PLAN_TEXT = `(Default Plan)
-Daily Plan (30-45 minutes)
+export const DEFAULT_PLAN_TEXT = `Daily Plan (30-45 minutes)
 
 1. Warm-up (5-10 minutes)
    - Diaphragmatic Breathing: 3x diaphragmatic breaths (in through the nose and out through the mouth). Breathe in to full capacity for 4 seconds, hold for 4 seconds, and breathe out for 6 seconds.
@@ -45,7 +73,7 @@ Daily Plan (30-45 minutes)
    - Lip Trill Explanation: To do a lip trill, gently close your lips together without pressing them tightly. Relax your cheeks. Purse your lips slightly, as if you were about to give a kiss. Then, push air through your lips, causing them to vibrate and create a "brrr" sound. The key is to keep your lips relaxed, so the air can move them freely. It's almost like making a motorboat sound.
 
 2. Pitch Training (15-20 minutes)
-   - Pitch Matching Exercise: Use a pitch tracker app (like Voice Tools on Android/iOS or Szimanski Generator on the web).
+   - Pitch Matching Exercise: Use the pitch tracker.
    - Goal: Aim for C4 as a starting point for pitch (look at pitch ranges in the document).
    - Method:
      - Use your pitch tracker to check the pitch of your voice.
@@ -80,11 +108,10 @@ Progression (What comes next after a few weeks):
 - Reading Practice:
   - Once you feel more comfortable with pitch and resonance, incorporate reading practice using simple sentences like "Today I went to the park to see a balloon." (mentioned in the documents). Focus on maintaining your target pitch and resonance throughout the sentence.
 
-Important Notes on the provided documents:
+Important Notes:
 - "No voice is 'too deep' for voice feminization": This is crucial to remember. Progress is possible regardless of your starting point.
 - Safety: Prioritize safety by avoiding overdoing it and paying attention to your body.
-- Consistency is KEY: Just as the documents mention, keep doing the excercise everyday and record the progress.`;
-
+- Consistency is KEY: Keep doing the exercise everyday and record the progress.`;
 
 export const DEFAULT_SESSION_FOCUS = "Remember to maintain good posture. Keep your shoulders relaxed and breathe from your diaphragm.\nHydrate frequently!";
 
@@ -99,6 +126,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   planMode: 'structured',
   currentRoutine: DEFAULT_ROUTINE,
   simplePlanText: DEFAULT_PLAN_TEXT,
+  practicePrompts: [],
   
   sessionFocus: DEFAULT_SESSION_FOCUS,
   theme: 'dark',

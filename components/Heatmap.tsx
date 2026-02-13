@@ -42,24 +42,27 @@ export const Heatmap: React.FC<HeatmapProps> = ({ stats }) => {
           currentWeek = [];
       }
   });
-  // Push partial week if any (shouldn't happen with startOfWeek logic but safe to have)
   if (currentWeek.length > 0) weeks.push(currentWeek);
 
-  // 3. Color Logic
-  const getColor = (value: number) => {
-    if (!value) return 'bg-slate-200 dark:bg-white/5';
+  // 3. Style Logic
+  const getStyle = (value: number) => {
+    if (!value || value <= 0) return { className: 'bg-slate-200 dark:bg-white/5' };
     
     if (metric === 'minutes') {
         const mins = value / 60;
-        // Max light up at 30 mins
-        if (mins <= 0) return 'bg-slate-200 dark:bg-white/5';
-        if (mins < 10) return 'bg-primary/30'; 
-        if (mins < 20) return 'bg-primary/60'; 
-        return 'bg-primary'; // 30+ mins
+        // Gradual scaling: 0 to 30 mins -> 0.2 to 1.0 opacity equivalent
+        // We use primary color and adjust opacity via inline style for granularity
+        const ratio = Math.min(1, mins / 30);
+        const opacity = 0.2 + (ratio * 0.8); // Min visibility 0.2, max 1.0
+        
+        return {
+            className: 'bg-primary',
+            style: { opacity }
+        };
     } else {
-        // Light up once 1 session is complete
-        if (value >= 1) return 'bg-primary';
-        return 'bg-slate-200 dark:bg-white/5';
+        // Sessions: Simple On/Off or tiers
+        if (value >= 1) return { className: 'bg-primary' };
+        return { className: 'bg-slate-200 dark:bg-white/5' };
     }
   };
 
@@ -67,7 +70,6 @@ export const Heatmap: React.FC<HeatmapProps> = ({ stats }) => {
   const monthLabels: { label: string, index: number }[] = [];
   weeks.forEach((week, i) => {
       const firstDay = week[0];
-      // Simple heuristic: if first week of month
       if (getDate(firstDay) <= 7 && i > 0 && weeks[i-1][0].getMonth() !== firstDay.getMonth()) {
           monthLabels.push({ label: format(firstDay, 'MMM'), index: i });
       } else if (i===0) {
@@ -122,7 +124,7 @@ export const Heatmap: React.FC<HeatmapProps> = ({ stats }) => {
                             <div 
                                 key={i} 
                                 className="absolute text-[9px] text-text-muted font-bold uppercase"
-                                style={{ left: `${m.index * 14}px` }} // 10px box + 4px gap approx
+                                style={{ left: `${m.index * 14}px` }} 
                             >
                                 {m.label}
                             </div>
@@ -144,11 +146,13 @@ export const Heatmap: React.FC<HeatmapProps> = ({ stats }) => {
                                     }
 
                                     const displayVal = metric === 'minutes' ? `${Math.round(val/60)}m` : `${val}`;
+                                    const { className, style } = getStyle(val);
                                     
                                     return (
                                         <div 
                                             key={dateKey}
-                                            className={`w-[10px] h-[10px] rounded-[2px] ${getColor(val)} transition-colors relative group`}
+                                            className={`w-[10px] h-[10px] rounded-[2px] transition-colors relative group ${className}`}
+                                            style={style}
                                             onMouseEnter={(e) => {
                                                 const rect = e.currentTarget.getBoundingClientRect();
                                                 setHoverInfo({

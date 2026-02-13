@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Routine, ExerciseBlock } from '../types';
-import { Play, Pause, SkipForward, SkipBack, CheckCircle2 } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, CheckCircle2, ChevronLeft, ChevronRight, Infinity } from 'lucide-react';
 import { Button } from './Button';
 
 interface SessionPlayerProps {
@@ -11,44 +11,51 @@ interface SessionPlayerProps {
   beepVolume: number;
 }
 
-const PROMPTS = [
-  "The quick brown fox jumps over the lazy dog.",
-  "How much wood would a woodchuck chuck?",
-  "She sells seashells by the seashore.",
-  "Unique New York, Unique New York.",
-  "Red leather, yellow leather."
-];
-
 export const SessionPlayer: React.FC<SessionPlayerProps> = ({ routine, onComplete, onStop, beepVolume }) => {
   const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(routine.blocks[0]?.duration || 60);
+  const [elapsedInBlock, setElapsedInBlock] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [practiceText, setPracticeText] = useState(PROMPTS[0]);
+  const [currentPromptIndex, setCurrentPromptIndex] = useState(0);
 
   const block = routine.blocks[currentBlockIndex];
   const nextBlock = routine.blocks[currentBlockIndex + 1];
+  const isInfinite = block.duration === 0;
+
+  // Filter out empty lines from editing
+  const activePrompts = (block.prompts || []).filter(p => p.trim().length > 0);
 
   const totalRoutineTime = routine.blocks.reduce((acc, b) => acc + b.duration, 0);
-  // Calculate elapsed based on completed blocks + time elapsed in current
   const elapsedPrev = routine.blocks.slice(0, currentBlockIndex).reduce((acc, b) => acc + b.duration, 0);
-  const totalElapsed = elapsedPrev + (block.duration - timeLeft);
-  const progress = Math.min(100, (totalElapsed / totalRoutineTime) * 100);
+  const totalElapsed = elapsedPrev + (isInfinite ? 0 : (block.duration - timeLeft));
+  const progress = totalRoutineTime > 0 ? Math.min(100, (totalElapsed / totalRoutineTime) * 100) : 0;
 
   useEffect(() => {
+    // Reset prompt index and elapsed time when block changes
+    setCurrentPromptIndex(0);
+    setElapsedInBlock(0);
+  }, [currentBlockIndex]);
+
+  useEffect(() => {
+    // Handle Timed & Infinite Blocks
     let interval: number;
     if (!isPaused) {
         interval = window.setInterval(() => {
-            setTimeLeft((prev) => {
-                if (prev <= 1) {
-                    handleNextBlock();
-                    return 0; // Temp, will reset in handleNextBlock
-                }
-                return prev - 1;
-            });
+            if (isInfinite) {
+                setElapsedInBlock(prev => prev + 1);
+            } else {
+                setTimeLeft((prev) => {
+                    if (prev <= 1) {
+                        handleNextBlock();
+                        return 0; 
+                    }
+                    return prev - 1;
+                });
+            }
         }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isPaused, currentBlockIndex]);
+  }, [isPaused, currentBlockIndex, isInfinite]);
 
   // Audio Cue
   const playBeep = () => {
@@ -77,10 +84,9 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ routine, onComplet
         const nextIndex = currentBlockIndex + 1;
         setCurrentBlockIndex(nextIndex);
         setTimeLeft(routine.blocks[nextIndex].duration);
-        setPracticeText(PROMPTS[Math.floor(Math.random() * PROMPTS.length)]);
     } else {
         playBeep();
-        setTimeout(playBeep, 250); // Double beep for finish
+        setTimeout(playBeep, 250); 
         onComplete();
     }
   };
@@ -91,6 +97,14 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ routine, onComplet
         setCurrentBlockIndex(prevIndex);
         setTimeLeft(routine.blocks[prevIndex].duration);
     }
+  };
+
+  const nextPrompt = () => {
+      setCurrentPromptIndex((prev) => (prev + 1) % activePrompts.length);
+  };
+
+  const prevPrompt = () => {
+      setCurrentPromptIndex((prev) => (prev - 1 + activePrompts.length) % activePrompts.length);
   };
 
   const formatTime = (s: number) => {
@@ -113,16 +127,61 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ routine, onComplet
                 <h2 className="text-4xl font-black text-text">{block.title}</h2>
             </div>
 
-            <div className="text-[120px] font-mono font-bold leading-none tracking-tighter text-text tabular-nums drop-shadow-2xl">
-                {formatTime(timeLeft)}
+            <div className="flex flex-col items-center justify-center h-[140px]">
+                {isInfinite ? (
+                    <>
+                        <div className="text-[100px] font-mono font-bold leading-none tracking-tighter text-text tabular-nums drop-shadow-2xl">
+                            {formatTime(elapsedInBlock)}
+                        </div>
+                        <div className="flex items-center gap-2 text-secondary animate-pulse mt-2">
+                            <Infinity size={24} />
+                            <span className="text-xs font-bold uppercase tracking-widest">Open Mode</span>
+                        </div>
+                    </>
+                ) : (
+                    <div className="text-[120px] font-mono font-bold leading-none tracking-tighter text-text tabular-nums drop-shadow-2xl">
+                        {formatTime(timeLeft)}
+                    </div>
+                )}
             </div>
 
-            <div className="bg-black/10 dark:bg-black/30 p-4 rounded-xl max-w-lg border border-white/5">
-                <p className="text-text-muted text-sm italic">"{block.description}"</p>
-                <div className="mt-4 pt-4 border-t border-white/5">
-                    <p className="text-lg font-medium text-primary">"{practiceText}"</p>
+            {(block.description || activePrompts.length > 0) && (
+                <div className="bg-black/10 dark:bg-black/30 p-4 rounded-xl max-w-xl border border-white/5 w-full relative group">
+                    {block.description && (
+                        <p className="text-text-muted text-sm italic mb-4">"{block.description}"</p>
+                    )}
+                    
+                    {activePrompts.length > 0 && (
+                        <>
+                            <div className="pt-4 border-t border-white/5 flex items-center justify-center gap-4">
+                                <button 
+                                    onClick={prevPrompt}
+                                    className="p-2 text-text-muted hover:text-primary transition-colors hover:bg-white/5 rounded-full"
+                                >
+                                    <ChevronLeft size={20} />
+                                </button>
+                                
+                                <div className="flex-1 min-h-[3rem] flex items-center justify-center">
+                                    <p className="text-lg font-medium text-primary break-words leading-tight transition-all">
+                                        "{activePrompts[currentPromptIndex]}"
+                                    </p>
+                                </div>
+
+                                <button 
+                                    onClick={nextPrompt}
+                                    className="p-2 text-text-muted hover:text-primary transition-colors hover:bg-white/5 rounded-full"
+                                >
+                                    <ChevronRight size={20} />
+                                </button>
+                            </div>
+                            
+                            <div className="absolute bottom-2 right-4 text-[9px] text-text-muted opacity-50">
+                                {currentPromptIndex + 1} / {activePrompts.length}
+                            </div>
+                        </>
+                    )}
                 </div>
-            </div>
+            )}
         </div>
 
         {/* Next Up Preview */}
@@ -141,11 +200,13 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ routine, onComplet
                 <Button variant="outline" onClick={handlePrevBlock} disabled={currentBlockIndex === 0}>
                     <SkipBack size={20} />
                 </Button>
+                
                 <Button variant="primary" size="lg" className="w-32" onClick={() => setIsPaused(!isPaused)}>
                     {isPaused ? <Play size={24} className="fill-current" /> : <Pause size={24} className="fill-current" />}
                 </Button>
-                <Button variant="outline" onClick={handleNextBlock}>
-                    <SkipForward size={20} />
+
+                <Button variant={isInfinite ? "primary" : "outline"} onClick={handleNextBlock} className={isInfinite ? "shadow-glow" : ""}>
+                    {isInfinite ? "Done / Next" : <SkipForward size={20} />}
                 </Button>
             </div>
 

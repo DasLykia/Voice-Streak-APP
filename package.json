@@ -1,6 +1,6 @@
 {
   "name": "voicestride",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "type": "module",
   "main": "electron/main.js",
@@ -13,7 +13,7 @@
     "start": "electron .",
     "win:build": "npm run pack:win && npm run make:release",
     "pack:win": "npm run build && electron-builder --dir --config.asar=true",
-    "make:release": "vpk pack --packId VoiceStride --packVersion 1.0.4 --packDir Releases/win-unpacked --mainExe VoiceStride.exe --outputDir Releases",
+    "make:release": "vpk pack --packId VoiceStride --packVersion 1.0.5 --packDir Releases/win-unpacked --mainExe VoiceStride.exe --outputDir Releases",
     "releases": "npm run win:build"
   },
   "dependencies": {

@@ -60,11 +60,17 @@ export const AudioVisualizer: React.FC = () => {
       const dataArray = new Uint8Array(bufferLength);
       analyser.getByteFrequencyData(dataArray);
 
-      const usedBins = Math.floor(bufferLength * 0.7); 
-      const barCount = 40; 
-      const step = Math.floor(usedBins / barCount);
-      const barWidth = (width / barCount) / 1.5; 
-      const gap = (width - (barWidth * barCount)) / (barCount + 1);
+      // Focus on voice frequencies (approx 0 - 4000Hz). 
+      // bufferLength corresponds to Nyquist (half sample rate ~24kHz).
+      // So we only need the first ~1/6th of bins for a cleaner vocal visualizer.
+      const usefulBinCount = Math.floor(bufferLength * 0.15); 
+      
+      const barCount = 32; // Cleaner, fewer bars
+      const step = Math.ceil(usefulBinCount / barCount);
+      const gapRatio = 0.3;
+      const totalBarWidth = width / barCount;
+      const barWidth = totalBarWidth * (1 - gapRatio);
+      const gap = totalBarWidth * gapRatio;
 
       const gradient = ctx.createLinearGradient(0, height, 0, 0);
       gradient.addColorStop(0, primaryColor);
@@ -74,31 +80,36 @@ export const AudioVisualizer: React.FC = () => {
       for (let i = 0; i < barCount; i++) {
         let sum = 0;
         for (let j = 0; j < step; j++) {
-            sum += dataArray[(i * step) + j];
+            // Safe access
+            const idx = (i * step) + j;
+            if (idx < bufferLength) {
+                sum += dataArray[idx];
+            }
         }
         const avg = sum / step;
         
-        // Increased Sensitivity:
-        // Use a more aggressive scaling factor. 
-        // Normalizing avg (0-255) to 0-1, then applying power curve, then scaling up.
-        // Multiply by 1.8 to utilize more height for lower volumes.
-        const val = Math.pow(avg / 255, 1.0) * 1.8; 
-        const barHeight = Math.min(height, val * height);
-
-        // Stronger Glow
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = primaryColor;
-
-        const xPos = gap + (i * (barWidth + gap));
+        // Logarithmic-ish scaling for better visual response to volume
+        // Normalize 0-255 to 0-1
+        let val = avg / 255;
         
-        if (barHeight > 2) {
-            const yPos = (height - barHeight) / 2;
-            ctx.beginPath();
-            ctx.roundRect(xPos, yPos, barWidth, barHeight, barWidth/2);
-            ctx.fill();
-        }
+        // Apply threshold to cut low noise
+        if (val < 0.05) val = 0;
         
-        ctx.shadowBlur = 0;
+        // Non-linear boost for visibility but limit max height
+        // Using a curve that flattens out to avoid "too big" bars for high volume/tones
+        val = Math.pow(val, 1.5); 
+        
+        // Add a base height for aesthetic if sound is present
+        const renderedHeight = val > 0 ? Math.max(4, val * height * 0.8) : 2; 
+
+        // Rounded bars logic
+        const xPos = (i * (barWidth + gap)) + (gap / 2); // Center distributed
+        const yPos = (height - renderedHeight) / 2; // Center vertically
+        
+        ctx.beginPath();
+        // Modern rounded pill shape
+        ctx.roundRect(xPos, yPos, barWidth, renderedHeight, barWidth / 2);
+        ctx.fill();
       }
     };
 

@@ -9,6 +9,7 @@ export interface ExerciseBlock {
   title: string;
   duration: number; // in seconds
   description: string;
+  prompts?: string[]; // Custom phrases for this block
 }
 
 export interface Routine {
@@ -82,6 +83,7 @@ export interface AppSettings {
   planMode: 'structured' | 'simple';
   currentRoutine: Routine; 
   simplePlanText: string; 
+  practicePrompts: string[]; // Global fallback prompts
   
   sessionFocus: string;
   

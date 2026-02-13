@@ -11,6 +11,7 @@ interface PitchGraphProps {
   isLive?: boolean;
   isScrollable?: boolean;
   containerClassName?: string;
+  maxTime?: number; // Force X-axis scale
 }
 
 const PITCH_MIN = 50; // Min Hz to display
@@ -26,6 +27,7 @@ export const PitchGraph: React.FC<PitchGraphProps> = ({
   isLive = false,
   isScrollable = false,
   containerClassName,
+  maxTime,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,7 +77,7 @@ export const PitchGraph: React.FC<PitchGraphProps> = ({
 
     const now = data.length > 0 ? data[data.length - 1].time : 0;
     const timeMin = isLive ? Math.max(0, now - timeWindow) : 0;
-    const timeMax = isLive ? timeMin + timeWindow : (data[data.length - 1]?.time || timeWindow);
+    const timeMax = maxTime !== undefined ? maxTime : (isLive ? timeMin + timeWindow : (data[data.length - 1]?.time || timeWindow));
 
     const toX = (time: number) => PADDING.left + ((time - timeMin) / (timeMax - timeMin)) * graphWidth;
     const toY = (pitch: number) => PADDING.top + graphHeight - ((Math.max(0, pitch) - PITCH_MIN) / (PITCH_MAX - PITCH_MIN)) * graphHeight;
@@ -83,9 +85,9 @@ export const PitchGraph: React.FC<PitchGraphProps> = ({
     ctx.clearRect(0, 0, currentWidth, currentHeight);
     
     const style = getComputedStyle(document.documentElement);
-    const mutedColor = style.getPropertyValue('--text-muted').trim();
-    const primaryColor = style.getPropertyValue('--col-primary').trim();
-    const secondaryColor = style.getPropertyValue('--col-secondary').trim();
+    const mutedColor = style.getPropertyValue('--text-muted').trim() || '#888';
+    const primaryColor = style.getPropertyValue('--col-primary').trim() || '#8b5cf6';
+    const secondaryColor = style.getPropertyValue('--col-secondary').trim() || '#10b981';
 
     // 1. Draw Grid & Labels
     ctx.font = '10px sans-serif';
@@ -123,13 +125,18 @@ export const PitchGraph: React.FC<PitchGraphProps> = ({
     ctx.beginPath();
     let firstPoint = true;
     const visibleData = isLive ? data.filter(p => p.time >= timeMin) : data;
+    
+    // Optimization: Don't draw points that are out of X bounds significantly
     for (const point of visibleData) {
         if (point.pitch > 0) {
+          const x = toX(point.time);
+          const y = toY(point.pitch);
+          
           if (firstPoint) {
-            ctx.moveTo(toX(point.time), toY(point.pitch));
+            ctx.moveTo(x, y);
             firstPoint = false;
           } else {
-            ctx.lineTo(toX(point.time), toY(point.pitch));
+            ctx.lineTo(x, y);
           }
         } else {
           firstPoint = true; 
@@ -156,7 +163,7 @@ export const PitchGraph: React.FC<PitchGraphProps> = ({
 
   useEffect(() => {
     drawGraph();
-  }, [data, targetPitch, canvasWidth, height, timeWindow, isLive, currentTime, isScrollable]);
+  }, [data, targetPitch, canvasWidth, height, timeWindow, isLive, currentTime, isScrollable, maxTime]);
   
   // Auto-scroll for live graph
   useEffect(() => {

@@ -33,7 +33,7 @@ import {
 } from './types';
 import { 
   DEFAULT_SETTINGS, INITIAL_STATS, STORAGE_KEYS, ACHIEVEMENTS_LIST, 
-  XP_PER_MINUTE, XP_PER_SESSION, XP_LEVEL_BASE, THEMES, DEFAULT_ROUTINE 
+  XP_PER_MINUTE, XP_PER_SESSION, XP_LEVEL_BASE, THEMES, DEFAULT_ROUTINE
 } from './constants';
 import { 
   loadFromStorage, saveToStorage, saveAudioBlob, deleteAudioBlob 
@@ -159,13 +159,9 @@ const SettingsForm: React.FC<{ settings: AppSettings; stats: UserStats; onSave: 
           let nextSettings = {...localSettings, disableLeveling: newValue};
           
           if (!newValue) {
-              // We are turning OFF "Unlock All".
-              // Check if current theme is allowed at current level.
               const currentThemeDef = THEMES[nextSettings.colorTheme];
               const isGrandMasterTheme = nextSettings.colorTheme === 'custom';
               
-              // Logic: If using custom theme but level < 50 -> Reset to violet
-              // Logic: If using standard theme but level < unlockLevel -> Reset to violet
               if (isGrandMasterTheme && stats.level < 50) {
                    nextSettings.colorTheme = 'violet';
               } else if (currentThemeDef && stats.level < currentThemeDef.unlockLevel) {
@@ -204,6 +200,10 @@ const SettingsForm: React.FC<{ settings: AppSettings; stats: UserStats; onSave: 
       if (confirm("WARNING: This will permanently delete ALL session history, recordings, goals, and settings.\n\nAre you absolutely sure you want to reset everything?")) {
           onReset();
       }
+  };
+
+  const handleSaveAll = () => {
+      onSave(localSettings);
   };
 
   const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -289,6 +289,31 @@ const SettingsForm: React.FC<{ settings: AppSettings; stats: UserStats; onSave: 
         </div>
       </section>
 
+      {/* Mode Section */}
+      <section>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4">Training Mode</h3>
+        <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+                <button 
+                    onClick={() => setLocalSettings({...localSettings, planMode: 'structured'})}
+                    className={`p-4 rounded-xl border text-left transition-all ${localSettings.planMode === 'structured' ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-surface border-border hover:border-primary/50'}`}
+                >
+                    <div className={`mb-2 ${localSettings.planMode === 'structured' ? 'text-primary' : 'text-text-muted'}`}><Blocks size={20} /></div>
+                    <div className="font-bold text-sm text-text">Guided Routine</div>
+                    <div className="text-[10px] text-text-muted mt-1">Timed blocks & prompts</div>
+                </button>
+                <button 
+                    onClick={() => setLocalSettings({...localSettings, planMode: 'simple'})}
+                    className={`p-4 rounded-xl border text-left transition-all ${localSettings.planMode === 'simple' ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-surface border-border hover:border-primary/50'}`}
+                >
+                    <div className={`mb-2 ${localSettings.planMode === 'simple' ? 'text-primary' : 'text-text-muted'}`}><FileText size={20} /></div>
+                    <div className="font-bold text-sm text-text">Simple Plan</div>
+                    <div className="text-[10px] text-text-muted mt-1">Free text editor & timer</div>
+                </button>
+            </div>
+        </div>
+      </section>
+
       {/* Progression Section */}
       <section>
         <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4">Progression</h3>
@@ -330,29 +355,6 @@ const SettingsForm: React.FC<{ settings: AppSettings; stats: UserStats; onSave: 
                     )
                 })}
             </div>
-        </div>
-      </section>
-
-      {/* Mode Section */}
-      <section>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4">Training Mode</h3>
-        <div className="grid grid-cols-2 gap-4">
-            <button 
-                onClick={() => setLocalSettings({...localSettings, planMode: 'structured'})}
-                className={`p-4 rounded-xl border text-left transition-all ${localSettings.planMode === 'structured' ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-surface border-border hover:border-primary/50'}`}
-            >
-                <div className={`mb-2 ${localSettings.planMode === 'structured' ? 'text-primary' : 'text-text-muted'}`}><Blocks size={20} /></div>
-                <div className="font-bold text-sm text-text">Guided Routine</div>
-                <div className="text-[10px] text-text-muted mt-1">Timed blocks & prompts</div>
-            </button>
-            <button 
-                onClick={() => setLocalSettings({...localSettings, planMode: 'simple'})}
-                className={`p-4 rounded-xl border text-left transition-all ${localSettings.planMode === 'simple' ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-surface border-border hover:border-primary/50'}`}
-            >
-                <div className={`mb-2 ${localSettings.planMode === 'simple' ? 'text-primary' : 'text-text-muted'}`}><FileText size={20} /></div>
-                <div className="font-bold text-sm text-text">Simple Plan</div>
-                <div className="text-[10px] text-text-muted mt-1">Free text editor & timer</div>
-            </button>
         </div>
       </section>
 
@@ -488,14 +490,14 @@ const SettingsForm: React.FC<{ settings: AppSettings; stats: UserStats; onSave: 
       </section>
 
       <div className="pt-4 border-t border-border">
-        <Button onClick={() => onSave(localSettings)} className="w-full">Save Configuration</Button>
+        <Button onClick={handleSaveAll} className="w-full">Save Configuration</Button>
       </div>
     </div>
   );
 };
 
 // --- Focus Block Component ---
-const SessionFocusBlock: React.FC<{ focusText: string; onUpdate: (text: string) => void }> = ({ focusText, onUpdate }) => {
+const SessionFocusBlock: React.FC<{ focusText: string; onUpdate: (text: string) => void; isReadOnly?: boolean; compact?: boolean }> = ({ focusText, onUpdate, isReadOnly, compact }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [tempText, setTempText] = useState(focusText);
 
@@ -505,12 +507,12 @@ const SessionFocusBlock: React.FC<{ focusText: string; onUpdate: (text: string) 
     };
 
     return (
-        <div className="bg-surface rounded-2xl border border-white/5 p-4 shadow-soft flex flex-col gap-2 relative group w-full transition-all duration-300">
+        <div className={`bg-surface rounded-2xl border border-white/5 p-4 shadow-soft flex flex-col gap-2 relative group w-full transition-all duration-300 ${compact ? 'h-32' : 'min-h-[8rem]'}`}>
             <div className="flex justify-between items-center mb-1 shrink-0">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
                     <Zap size={14} className="text-yellow-500" /> Session Focus
                 </h3>
-                {!isEditing && (
+                {!isEditing && !isReadOnly && (
                     <button onClick={() => setIsEditing(true)} className="text-text-muted hover:text-text opacity-0 group-hover:opacity-100 transition-opacity">
                         <Edit3 size={14} />
                     </button>
@@ -518,13 +520,12 @@ const SessionFocusBlock: React.FC<{ focusText: string; onUpdate: (text: string) 
             </div>
             
             {isEditing ? (
-                <div className="flex flex-col gap-2 w-full">
+                <div className="flex flex-col gap-2 w-full h-full">
                     <textarea 
-                        className="w-full bg-black/20 rounded p-2 text-sm text-text outline-none resize-none focus:ring-1 focus:ring-primary/50 border border-white/5"
+                        className="w-full bg-black/20 rounded p-2 text-sm text-text outline-none resize-none focus:ring-1 focus:ring-primary/50 border border-white/5 flex-1"
                         value={tempText}
                         onChange={(e) => setTempText(e.target.value)}
                         autoFocus
-                        rows={4}
                     />
                     <div className="flex justify-end gap-2">
                         <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
@@ -532,7 +533,7 @@ const SessionFocusBlock: React.FC<{ focusText: string; onUpdate: (text: string) 
                     </div>
                 </div>
             ) : (
-                <div className="w-full text-sm text-text leading-relaxed whitespace-pre-wrap italic opacity-90 overflow-y-auto custom-scrollbar max-h-32 min-h-[4rem]">
+                <div className={`w-full text-sm text-text leading-relaxed whitespace-pre-wrap italic opacity-90 overflow-y-auto custom-scrollbar ${compact ? 'h-full' : 'max-h-32'}`}>
                     {focusText || "Set a focus for your practice sessions..."}
                 </div>
             )}
@@ -549,7 +550,8 @@ const App: React.FC = () => {
     return { 
         ...DEFAULT_SETTINGS, 
         ...loaded, 
-        currentRoutine: loaded.currentRoutine?.blocks ? loaded.currentRoutine : DEFAULT_SETTINGS.currentRoutine 
+        currentRoutine: loaded.currentRoutine?.blocks ? loaded.currentRoutine : DEFAULT_SETTINGS.currentRoutine,
+        practicePrompts: [] // Ensure empty
     };
   });
   
@@ -557,7 +559,7 @@ const App: React.FC = () => {
   const [recordings, setRecordings] = useState<Recording[]>(() => loadFromStorage(STORAGE_KEYS.RECORDINGS, []));
   const [sessions, setSessions] = useState<TrainingSession[]>(() => loadFromStorage(STORAGE_KEYS.SESSIONS, []));
   const [goals, setGoals] = useState<Goal[]>(() => loadFromStorage(STORAGE_KEYS.GOALS, []));
-  const [appVersion, setAppVersion] = useState('1.0.0');
+  const [appVersion, setAppVersion] = useState('1.0.5');
 
   // Update State
   const [updateAvailable, setUpdateAvailable] = useState<UpdateInfo | null>(null);
@@ -803,6 +805,10 @@ const App: React.FC = () => {
         setStatusMessage(`LEVEL UP! ${newLevel}`);
     }
 
+    // Append notes from healthLog to session notes if any
+    // This allows the journal entry to appear in session history
+    const sessionNotes = healthLog.notes ? healthLog.notes : undefined;
+
     const newSession: TrainingSession = {
         id: crypto.randomUUID(),
         startTime: startTimeRef.current,
@@ -813,6 +819,7 @@ const App: React.FC = () => {
         targetPitch: settings.targetPitch,
         routineUsed: settings.planMode === 'structured' ? settings.currentRoutine.id : undefined,
         healthLog,
+        notes: sessionNotes, // Save journal notes here
         mode: settings.planMode
     };
 
@@ -1223,8 +1230,22 @@ const App: React.FC = () => {
                         <VocalHealthChart sessions={sessions} stats={stats} />
                     </div>
 
-                    <AchievementsWidget unlockedIds={stats.unlockedAchievements} />
+                    {!isTraining && (
+                        <AchievementsWidget unlockedIds={stats.unlockedAchievements} />
+                    )}
                     
+                    {/* Active Session: Show Focus Block Here */}
+                    {isTraining && (
+                        <div className="shrink-0">
+                            <SessionFocusBlock 
+                                focusText={settings.sessionFocus} 
+                                onUpdate={() => {}} 
+                                isReadOnly={true}
+                                compact={true}
+                            />
+                        </div>
+                    )}
+
                     <div className="flex-1 min-h-[300px]">
                         <GoalsWidget 
                             goals={goals} 

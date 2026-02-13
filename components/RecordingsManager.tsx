@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Recording, TrainingSession } from '../types';
-import { Trash2, Play, Pause, Search, Calendar, Volume2, CheckSquare, Square, Eye, EyeOff, FileText } from 'lucide-react';
+import { Trash2, Play, Pause, Search, Calendar, Volume2, CheckSquare, Square, Eye, EyeOff, FileText, X } from 'lucide-react';
 import { Button } from './Button';
 import { getAudioBlob } from '../services/storage';
 import { PitchGraph } from './PitchGraph';
@@ -19,27 +19,43 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  
+  // playingId refers to the recording that is currently OPEN/Active in the UI
   const [playingId, setPlayingId] = useState<string | null>(null);
+  
+  // isPlaying refers to whether the audio is actively running
+  const [isPlaying, setIsPlaying] = useState(false);
+  
   const [volume, setVolume] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showPitchGraph, setShowPitchGraph] = useState(true);
   const [playbackTime, setPlaybackTime] = useState(0);
+  
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Initialize audio object once
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
+      
       audioRef.current.onended = () => {
-        setPlayingId(null);
+        setIsPlaying(false);
         setPlaybackTime(0);
       };
+      
       audioRef.current.ontimeupdate = () => {
         if (audioRef.current) {
             setPlaybackTime(audioRef.current.currentTime * 1000); // convert to ms
         }
       };
+
+      audioRef.current.onpause = () => {
+          setIsPlaying(false);
+      };
+      audioRef.current.onplay = () => {
+          setIsPlaying(true);
+      };
     }
-    audioRef.current.volume = volume;
     
     return () => {
         if(audioRef.current) {
@@ -47,6 +63,13 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({
             audioRef.current.src = "";
         }
     }
+  }, []);
+
+  // Handle volume changes separately to avoid re-initializing audio
+  useEffect(() => {
+      if (audioRef.current) {
+          audioRef.current.volume = volume;
+      }
   }, [volume]);
 
   // Handle highlighting
@@ -54,9 +77,8 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({
       if (highlightedId) {
           const rec = recordings.find(r => r.id === highlightedId);
           if (rec) {
-              setSearchTerm(rec.filename); // Filter to find it easily
-              handlePlay(rec); // Auto play
-              // Scroll logic
+              setSearchTerm(rec.filename);
+              handlePlay(rec, true); 
               setTimeout(() => {
                   const el = document.getElementById(`recording-${highlightedId}`);
                   if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -65,23 +87,32 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({
       }
   }, [highlightedId]);
 
-  const handlePlay = async (rec: Recording) => {
+  const handlePlay = async (rec: Recording, forcePlay = false) => {
     if (!audioRef.current) return;
 
     if (playingId === rec.id) {
-      audioRef.current.pause();
-      setPlayingId(null);
+      // Toggle Play/Pause for the currently open recording
+      if (isPlaying && !forcePlay) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play().catch(e => console.error("Play error:", e));
+      }
     } else {
+      // Switch to new recording
       try {
+        // Clean up previous
+        if (audioRef.current.src) {
+            URL.revokeObjectURL(audioRef.current.src);
+        }
+        
         const blob = await getAudioBlob(rec.id);
         if (blob) {
-          if (audioRef.current.src) {
-              URL.revokeObjectURL(audioRef.current.src);
-          }
           const url = URL.createObjectURL(blob);
           setPlaybackTime(0);
           audioRef.current.src = url;
-          audioRef.current.play();
+          // IMPORTANT: Set volume before playing
+          audioRef.current.volume = volume;
+          audioRef.current.play().catch(e => console.error("Play error:", e));
           setPlayingId(rec.id);
         } else {
           alert('Audio file not found in database.');
@@ -92,12 +123,18 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({
     }
   };
 
+  const handleClosePlayer = () => {
+      if (audioRef.current) {
+          audioRef.current.pause();
+      }
+      setPlayingId(null);
+      setIsPlaying(false);
+  };
+
   const handleDelete = (id: string) => {
     if (confirm("Are you sure you want to delete this recording permanently?")) {
-      if (playingId === id && audioRef.current) {
-        audioRef.current.pause();
-        setPlayingId(null);
-        setPlaybackTime(0);
+      if (playingId === id) {
+        handleClosePlayer();
       }
       onDelete(id);
       if (selectedIds.has(id)) {
@@ -117,8 +154,10 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({
     const seekRatio = Math.max(0, Math.min(1, clickX / width));
     const newTime = seekRatio * duration;
 
-    audioRef.current.currentTime = newTime;
-    setPlaybackTime(newTime * 1000); 
+    if (isFinite(newTime)) {
+        audioRef.current.currentTime = newTime;
+        setPlaybackTime(newTime * 1000); 
+    }
   };
 
   const filtered = recordings
@@ -132,7 +171,6 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  // Bulk Actions
   const toggleSelection = (id: string) => {
     const newSelected = new Set(selectedIds);
     if (newSelected.has(id)) {
@@ -153,13 +191,10 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({
 
   const handleBulkDelete = () => {
     if (selectedIds.size === 0) return;
-    
-    if (confirm(`Are you sure you want to delete ${selectedIds.size} recordings? This action cannot be undone.`)) {
-        if (playingId && selectedIds.has(playingId) && audioRef.current) {
-            audioRef.current.pause();
-            setPlayingId(null);
+    if (confirm(`Are you sure you want to delete ${selectedIds.size} recordings?`)) {
+        if (playingId && selectedIds.has(playingId)) {
+            handleClosePlayer();
         }
-        
         selectedIds.forEach(id => onDelete(id));
         setSelectedIds(new Set());
     }
@@ -195,13 +230,8 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({
         <Button variant="outline" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}>
           Sort Date {sortOrder === 'asc' ? '↑' : '↓'}
         </Button>
-        <Button variant="outline" onClick={() => setShowPitchGraph(prev => !prev)} title="Toggle Pitch Graph">
-            {showPitchGraph ? <EyeOff size={16} className="mr-2" /> : <Eye size={16} className="mr-2" />}
-            Graph
-        </Button>
       </div>
 
-      {/* Bulk Actions Header */}
       <div className="flex items-center justify-between bg-surface/50 p-3 rounded-lg border border-white/5 h-12">
          <div className="flex items-center gap-3">
             <button 
@@ -235,14 +265,14 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({
         ) : (
           filtered.map(rec => {
             const isSelected = selectedIds.has(rec.id);
-            const isPlaying = playingId === rec.id;
+            const isOpen = playingId === rec.id;
             const hasGraphData = rec.pitchData && rec.pitchData.length > 0;
             const linkedSession = findSessionForRecording(rec.id);
 
             return (
                 <div key={rec.id} id={`recording-${rec.id}`}> 
                     <div 
-                        className={`flex items-center justify-between p-3 border transition-all duration-200 ${isSelected ? 'bg-primary/10 border-primary/30' : 'bg-surface border-white/5 hover:border-white/10'} ${isPlaying ? 'rounded-t-lg border-b-0' : 'rounded-lg'}`}
+                        className={`flex items-center justify-between p-3 border transition-all duration-200 ${isSelected ? 'bg-primary/10 border-primary/30' : 'bg-surface border-white/5 hover:border-white/10'} ${isOpen ? 'rounded-t-lg border-b-0 bg-surface' : 'rounded-lg'}`}
                     >
                         <div className="flex items-center gap-4 overflow-hidden flex-1">
                             <button 
@@ -253,12 +283,12 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({
                             </button>
 
                             <Button 
-                            size="icon" 
-                            variant={isPlaying ? 'primary' : 'secondary'}
-                            className="shrink-0"
-                            onClick={() => handlePlay(rec)}
+                                size="icon" 
+                                variant={isOpen && isPlaying ? 'primary' : 'secondary'}
+                                className="shrink-0"
+                                onClick={() => handlePlay(rec)}
                             >
-                            {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+                                {isOpen && isPlaying ? <Pause size={18} /> : <Play size={18} />}
                             </Button>
                             <div className="min-w-0 flex-1">
                                 <div className={`font-medium truncate ${isSelected ? 'text-primary' : ''}`}>{rec.filename}</div>
@@ -288,38 +318,67 @@ export const RecordingsManager: React.FC<RecordingsManagerProps> = ({
                         </div>
                     </div>
 
-                    {isPlaying && (
-                      <div className="bg-surface border border-white/5 border-t-0 rounded-b-lg p-3 space-y-3 animate-in fade-in duration-300">
-                        {/* Scrubber */}
-                        <div className="w-full group flex items-center gap-3">
-                          <span className="text-xs font-mono text-text-muted w-12 text-center">{formatSeconds(playbackTime / 1000)}</span>
-                          <div 
-                            className="flex-1 h-1.5 bg-background rounded-full cursor-pointer group relative"
-                            onClick={(e) => handleSeek(e, rec.duration)}
-                          >
-                            <div 
-                              className="absolute top-0 left-0 h-full bg-primary rounded-full"
-                              style={{ width: `${(playbackTime / (rec.duration * 1000)) * 100}%` }}
-                            />
-                            <div 
-                              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-                              style={{ left: `${(playbackTime / (rec.duration * 1000)) * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-xs font-mono text-text-muted w-12 text-center">{formatSeconds(rec.duration)}</span>
+                    {isOpen && (
+                      <div className="bg-surface border border-white/5 border-t-0 rounded-b-lg p-4 space-y-4 animate-in fade-in duration-300 relative">
+                        {/* Header Controls inside Open Card */}
+                        <div className="flex justify-between items-center text-xs text-text-muted">
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => setShowPitchGraph(!showPitchGraph)} className="hover:text-text flex items-center gap-1">
+                                    {showPitchGraph ? <EyeOff size={14} /> : <Eye size={14} />} {showPitchGraph ? 'Hide' : 'Show'} Analysis
+                                </button>
+                            </div>
+                            <button onClick={handleClosePlayer} className="hover:text-text p-1 bg-white/5 rounded">
+                                <X size={14} />
+                            </button>
                         </div>
-    
-                        {/* Graph (if toggled) */}
-                        {showPitchGraph && hasGraphData && (
-                          <div className="pt-2">
-                            <PitchGraph 
-                              data={rec.pitchData!}
-                              targetPitch={rec.targetPitch}
-                              height={150}
-                              currentTime={playbackTime}
-                            />
-                          </div>
-                        )}
+
+                        {/* Combined Player Area */}
+                        <div className="relative w-full">
+                            
+                            {/* Pitch Graph Container */}
+                            {showPitchGraph && hasGraphData && (
+                                <div className="w-full bg-black/20 rounded border border-white/5 mb-8">
+                                    <PitchGraph 
+                                        data={rec.pitchData!}
+                                        targetPitch={rec.targetPitch}
+                                        height={150}
+                                        currentTime={playbackTime}
+                                        containerClassName="w-full"
+                                        maxTime={rec.duration * 1000} // Synchronize X-axis scale with scrubber
+                                    />
+                                </div>
+                            )}
+
+                            {/* Scrubber Area - Aligned to graph padding (Left 40px, Right 10px) */}
+                            <div className={`relative h-8 w-full ${showPitchGraph && hasGraphData ? '-mt-6' : ''}`}>
+                                
+                                {/* Timestamps aligned to graph padding */}
+                                <div className="flex justify-between text-[10px] font-mono text-text-muted mb-1 pl-[40px] pr-[10px]">
+                                    <span className="w-10 text-left">{formatSeconds(playbackTime / 1000)}</span>
+                                    <span className="w-10 text-right">{formatSeconds(rec.duration)}</span>
+                                </div>
+
+                                {/* Actual Bar Container with specific padding to match graph */}
+                                <div className="w-full pl-[40px] pr-[10px] h-3 flex items-center">
+                                    <div 
+                                        className="w-full h-1.5 bg-background rounded-full cursor-pointer group relative"
+                                        onClick={(e) => handleSeek(e, rec.duration)}
+                                    >
+                                        {/* Progress Fill */}
+                                        <div 
+                                            className="absolute top-0 left-0 h-full bg-primary rounded-full"
+                                            style={{ width: `${(playbackTime / (rec.duration * 1000)) * 100}%` }}
+                                        />
+                                        
+                                        {/* Handle */}
+                                        <div 
+                                            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                                            style={{ left: `${(playbackTime / (rec.duration * 1000)) * 100}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                       </div>
                     )}
                 </div>
