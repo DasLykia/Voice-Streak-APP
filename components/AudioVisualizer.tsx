@@ -1,6 +1,7 @@
+
 import React, { useEffect, useRef } from 'react';
 import { audioService } from '../services/audio';
-import { Waves } from 'lucide-react';
+import { Activity } from 'lucide-react';
 
 export const AudioVisualizer: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -13,7 +14,6 @@ export const AudioVisualizer: React.FC = () => {
 
     if (!canvas || !ctx) return;
 
-    // Handle resizing
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         if (entry.target === canvas.parentElement) {
@@ -34,18 +34,23 @@ export const AudioVisualizer: React.FC = () => {
       const width = canvas.width;
       const height = canvas.height;
 
-      // Clear with transparency
       ctx.clearRect(0, 0, width, height);
 
+      // Theme Colors
+      const computedStyle = getComputedStyle(document.body);
+      const primaryColor = computedStyle.getPropertyValue('--col-primary').trim() || '#8b5cf6';
+      const secondaryColor = computedStyle.getPropertyValue('--col-secondary').trim() || '#10b981';
+
       if (!analyser) {
-        // Draw idle line
+        // Idle Animation - subtle pulse line
+        const time = Date.now() / 1000;
         ctx.beginPath();
         ctx.moveTo(0, height / 2);
-        ctx.lineTo(width, height / 2);
-        
-        // Use CSS variable for color adaptation
-        const idleColor = getComputedStyle(document.body).getPropertyValue('--text-muted').trim();
-        ctx.strokeStyle = idleColor || '#94a3b8';
+        for (let x = 0; x < width; x+=5) {
+            const y = (height / 2) + Math.sin(x * 0.05 + time) * 5;
+            ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
         ctx.lineWidth = 2;
         ctx.stroke();
         return;
@@ -55,30 +60,45 @@ export const AudioVisualizer: React.FC = () => {
       const dataArray = new Uint8Array(bufferLength);
       analyser.getByteFrequencyData(dataArray);
 
-      const barWidth = (width / bufferLength) * 2.5;
-      let barHeight;
-      let x = 0;
-
-      // Dynamic Gradient based on CSS variables
-      const computedStyle = getComputedStyle(document.body);
-      const colorStart = computedStyle.getPropertyValue('--col-primary').trim() || '#6366f1';
-      const colorEnd = computedStyle.getPropertyValue('--col-secondary').trim() || '#10b981';
+      const usedBins = Math.floor(bufferLength * 0.7); 
+      const barCount = 40; 
+      const step = Math.floor(usedBins / barCount);
+      const barWidth = (width / barCount) / 1.5; 
+      const gap = (width - (barWidth * barCount)) / (barCount + 1);
 
       const gradient = ctx.createLinearGradient(0, height, 0, 0);
-      gradient.addColorStop(0, colorStart);
-      gradient.addColorStop(1, colorEnd);
-
+      gradient.addColorStop(0, primaryColor);
+      gradient.addColorStop(1, secondaryColor);
       ctx.fillStyle = gradient;
 
-      for (let i = 0; i < bufferLength; i++) {
-        barHeight = (dataArray[i] / 255) * height;
-
-        // Rounded top bars look modern
-        if (barHeight > 0) {
-            ctx.fillRect(x, height - barHeight, barWidth, barHeight);
+      for (let i = 0; i < barCount; i++) {
+        let sum = 0;
+        for (let j = 0; j < step; j++) {
+            sum += dataArray[(i * step) + j];
         }
+        const avg = sum / step;
+        
+        // Increased Sensitivity:
+        // Use a more aggressive scaling factor. 
+        // Normalizing avg (0-255) to 0-1, then applying power curve, then scaling up.
+        // Multiply by 1.8 to utilize more height for lower volumes.
+        const val = Math.pow(avg / 255, 1.0) * 1.8; 
+        const barHeight = Math.min(height, val * height);
 
-        x += barWidth + 1;
+        // Stronger Glow
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = primaryColor;
+
+        const xPos = gap + (i * (barWidth + gap));
+        
+        if (barHeight > 2) {
+            const yPos = (height - barHeight) / 2;
+            ctx.beginPath();
+            ctx.roundRect(xPos, yPos, barWidth, barHeight, barWidth/2);
+            ctx.fill();
+        }
+        
+        ctx.shadowBlur = 0;
       }
     };
 
@@ -91,23 +111,20 @@ export const AudioVisualizer: React.FC = () => {
   }, []);
 
   return (
-    <div ref={containerRef} className="bg-surface rounded-2xl shadow-soft border border-white/5 p-6 flex flex-col gap-4 min-h-[200px] relative overflow-hidden transition-colors duration-300">
-      <div className="flex items-center gap-2 mb-2 z-10">
-        <div className="p-1.5 bg-background rounded-lg text-primary shadow-sm">
-           <Waves size={18} />
-        </div>
-        <div>
-            <h3 className="font-bold text-sm text-text">Audio Visualizer</h3>
-            <p className="text-xs text-text-muted">Live frequency spectrum</p>
-        </div>
-      </div>
+    <div ref={containerRef} className="glass-panel rounded-2xl p-0 flex flex-col relative overflow-hidden transition-colors duration-300 w-full h-full bg-black/20 border border-white/5">
       
-      <div className="flex-1 relative z-10 min-h-0">
+      {/* Label Overlay */}
+      <div className="absolute top-3 left-4 z-20 flex items-center gap-2">
+          <Activity size={12} className="text-primary animate-pulse" />
+          <span className="text-[10px] font-mono uppercase tracking-widest text-primary/80">Spectrum</span>
+      </div>
+
+      <div className="flex-1 relative z-10 w-full h-full">
          <canvas ref={canvasRef} className="w-full h-full block" />
       </div>
 
-      {/* Background Decor */}
-      <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-primary/5 to-transparent pointer-events-none" />
+      {/* Glossy Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none z-10" />
     </div>
   );
 };
