@@ -1,38 +1,45 @@
+
 # VoiceStride
 
-**VoiceStride** is a desktop application built with **Electron and React** to help track daily voice training progress, manage streaks, customize training plans, and optionally record your sessions. It is a complete rework of the previous Python-based Voice Training Tracker.
+**VoiceStride** is a desktop application built with **Electron and React** to help track daily voice training progress, manage streaks, customize training plans, and optionally record your sessions.
 
 ---
 
 ## Features ✨
 
-* **Daily Training Tracking** ⏱️: Start, pause, and stop a timer for each voice training session.
-* **Daily Streak Counter** 🔥: Track how many consecutive planned training days you’ve completed. Skips non-planned days and respects sick days.
-* **Total Training Counter** 🏋️: Counts all training sessions over time.
-* **Timer Metrics** ⏳:
-
-  * Current session timer.
-  * Total time trained today.
-  * Average training time per session.
-  * Total accumulated training time.
-* **Sick/Rest Days** 🛌: Mark specific days as sick or rest days, and preserve streaks.
-* **Customizable Training Plan** ✏️: Default plan provided; users can edit and save it.
-* **Training Days Selection** 📅: Select which days of the week you plan to train.
-* **Recording Option** 🎤: Toggle session recording, choose input/output devices, pause recording along with the timer, and save recordings with timestamps.
-* **Recording Management** 🎧:
-
-  * Search and filter recordings.
-  * Play, pause, adjust volume, and delete recordings.
-* **UI & UX** 🖥️:
-
-  * Modern, clean, and minimalistic design.
-  * Configurable theme (Light, Dark, System).
-  * Context feedback messages (“Saving… ✅ Saved!”, “Training Running…”)
-* **Desktop Installation** 💻:
-
-  * Installer creates desktop and start menu shortcuts.
-  * Option to choose installation folder.
-  * Settings and recordings are saved between sessions.
+*   **Training Modes** 🏋️:
+    *   **Guided Routines**: Create structured workouts with timed blocks, descriptions, and custom prompts.
+    *   **Open Practice**: Infinite timer mode for unstructured, free-form practice sessions.
+    *   **Simple Plan**: Editable text area for quick notes during open sessions.
+*   **Gamification & Progression** 🎮:
+    *   **XP System**: Earn experience points for every minute trained and session completed.
+    *   **Leveling**: Level up to unlock new **Color Themes** (Rose, Neon, Midnight, etc.).
+    *   **Achievements**: Unlock badges for milestones like streaks, total duration, and consistency.
+*   **Advanced Audio Analysis** 📊:
+    *   **Real-time Pitch Tracker**: Visualize your current pitch against a target frequency (Hz) with a deviation bar.
+    *   **Pitch Graphs**: Detailed Hz curves overlaying your recordings for post-session analysis.
+    *   **Spectrum Visualizer**: Real-time audio frequency visualization.
+*   **Vocal Health Tracking** ❤️:
+    *   Log **Effort (1-10)** and **Clarity (1-5)** after every session.
+    *   **Health Charts**: Visualize the relationship between session duration and vocal strain over time.
+    *   **Journaling**: Attach notes to specific sessions to track how your voice felt.
+*   **Analytics Dashboard** 📈:
+    *   **Activity Heatmap**: GitHub-style visualization of your training consistency.
+    *   **Detailed Stats**: Track total hours, recording volume, and most active days.
+    *   **Goals Widget**: Set and track custom targets for streaks, session counts, or duration.
+*   **Recording Studio** 🎧:
+    *   **Pre-Flight Check**: Verify microphone gain and check ambient noise levels before starting.
+    *   **Integrated Player**: Scrub through recordings with synchronized pitch analysis graphs.
+    *   **Management**: Bulk delete, search, and filter recordings.
+*   **Streak Management** 🔥:
+    *   **Smart Streaks**: Tracks consecutive training on planned days.
+    *   **Schedule Configuration**: Define your target training days (e.g., Mon, Wed, Fri).
+    *   **Sick/Rest Days**: Mark days as "Sick" to preserve your streak without training.
+*   **UI & UX** 🖥️:
+    *   **Themes**: Switch between Light/Dark modes and unlockable accent colors.
+*   **Desktop Integration** 💻:
+    *   **Auto-Updates**: Seamless background updates via Velopack.
+    *   **Offline First**: All data and recordings are stored locally on your machine.
 
 ---
 
@@ -43,7 +50,7 @@ You can run the app in two ways: **using the pre-built installer** or **from sou
 ### Method 1: Using the Installer (Recommended) 🖱️
 
 1. Go to the **Releases** page of this repository.
-2. Download the latest `.exe` installer (e.g., `VoiceStride Setup 0.1.0.exe`).
+2. Download the latest `.exe` installer (e.g., `VoiceStride Setup 1.1.0.exe`).
 3. Run the installer and follow the prompts. You can choose:
 
    * Installation folder.
@@ -86,21 +93,6 @@ npm start
 
 ---
 
-## What’s New in This Release 🆕
-
-* Full rewrite from Python → **Electron + React** for cross-platform desktop support.
-* Modern UI design with cleaner, minimalistic interface.
-* Persistent settings and recordings saved between sessions.
-* Added **recording management system**: search, filter, play, delete.
-* Advanced timer metrics and training statistics.
-* Installer now creates desktop and start menu shortcuts.
-* Customizable training plan and selectable training days.
-* Added **gain adjustment** for microphone input.
-* Improved streak logic: skips non-training days, supports multiple sick/rest days.
-* Optional recording toggle per session.
-
----
-
 ## Project Structure 🗂️
 
 ```
@@ -123,3 +115,6 @@ README.md          # This file
 * **electron-store** – Persistent settings storage
 * **lucide-react** – Icons
 * **date-fns** – Date utilities
+* **pitchy** – Audio pitch detection algorithms
+* **recharts** – Analytics charts
+* **velopack** – Update framework
