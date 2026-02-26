@@ -1,67 +1,96 @@
-# Resona
+<h1 align="center">
+  Resona
+</h1>
 
-**Resona** is a desktop application built with **Electron and React** designed to track daily voice training progress, manage streaks, analyze pitch accuracy in real-time, and customize training routines.
+<h3 align="center">
+🎙️ A professional desktop utility to track your voice training journey. 🎙️
+</h3>
 
----
+<p align="center">
+    <a href="https://github.com/DasLykia/Resona/releases/latest"><img alt="Latest Version" src="https://img.shields.io/github/v/release/DasLykia/Resona?color=informational&label=version&sort=semver"></a>
+    <img alt="Platform" src="https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white"/>
+</p>
 
-## Features ✨
+## Download & Install
 
-*   **Training Modes** 🏋️:
-    *   **Guided Routines**: Create structured workouts with timed blocks, customizable practice prompts, and descriptions.
-    *   **Open Practice**: Infinite timer mode for unstructured, free-form practice sessions.
-    *   **Simple Plan**: Editable text area for quick notes during open sessions.
-*   **Gamification & Progression** 🎮:
-    *   **XP System**: Earn experience points for every minute trained and session completed.
-    *   **Leveling**: Level up to unlock new **Color Themes**.
-    *   **Achievements**: Unlock badges for milestones like streaks, total duration, and consistency.
-*   **Advanced Audio Analysis** 📊:
-    *   **High-Fidelity Pitch Tracker**: Powered by the **McLeod Pitch Method**, providing stable detection that filters out sibilance and background noise.
-    *   **Pitch Graphs**: Detailed Hz curves overlaying your recordings for post-session analysis.
-    *   **Spectrum Visualizer**: Real-time audio frequency visualization.
-*   **Vocal Health Tracking** ❤️:
-    *   Log **Effort (1-10)** and **Clarity (1-5)** after every session.
-    *   **Health Charts**: Visualize the relationship between session duration and vocal strain over time.
-    *   **Journaling**: Integrated notes attach directly to specific sessions.
-*   **Analytics Dashboard** 📈:
-    *   **Activity Heatmap**: GitHub-style visualization of your training consistency.
-    *   **Detailed Stats**: Track total hours, recording volume, and most active days.
-    *   **Goals Widget**: Set and track custom targets for streaks, session counts, or duration.
-*   **Recording Studio** 🎧:
-    *   **Pre-Flight Check**: Verify microphone gain and input levels before starting.
-    *   **Integrated Player**: Scrub through recordings with synchronized pitch analysis graphs.
-    *   **Management**: Bulk delete, search, and filter recordings.
-*   **Streak Management** 🔥:
-    *   **Smart Streaks**: Tracks consecutive training based on your custom schedule.
-    *   **Schedule Configuration**: Define your specific training days (e.g., Mon, Wed, Fri).
-    *   **Sick/Rest Days**: Mark days as "Sick" to preserve your streak without training.
-*   **Desktop Integration** 💻:
-    *   **Auto-Updates**: Seamless background updates via Velopack.
-    *   **Offline First**: All data and recordings are stored locally on your machine.
+Grab the latest installer from our releases page. Resona uses **Velopack**, so your app will stay up-to-date automatically!
+
+- [**Download Latest Release**](https://github.com/DasLykia/Resona/releases/latest) (_Recommended_)
+
+Just run the `.exe` installer and you are good to go!
 
 ---
 
-## Installation 🛠️
+## What is Resona?
 
-You can run the app in two ways: **using the installer** or **building from source**.
+Resona is a modern desktop application designed to help **vocalists, voice actors, and public speakers** build a consistent training habit. 
 
-### Method 1: Using the Installer (Recommended) 🖱️
+Building a voice requires consistency, but tracking progress can be difficult. Resona solves this by combining:
+- 📅 **Streak Tracking** to keep you motivated.
+- ⏱️ **Session Logging** to track your total practice time.
+- 🎙️ **Audio Recording** to review your progress over time.
+- 🤒 **Sick Day Management** to protect your streak when you need rest.
 
-1. Go to the **Releases** page of this repository.
-2. Download the latest `Resona-win-Setup.exe`.
-3. Run the executable.
-   * *Note: The installation is silent and instant. The app will launch immediately after clicking.*
-4. A shortcut will be created on your Desktop and Start Menu.
-5. Settings, recordings, and progress are saved in your local user folder (`AppData/Roaming/Resona`).
+Your data is stored locally on your machine, giving you full control over your training logs.
 
 ---
 
-### Method 2: Running from Source (Dev) 📦
+## Features
 
-1. **Prerequisites:**
-   * Node.js (v18+ recommended)
-   * .NET SDK (Required for Velopack packaging tools)
+### 🔥 Streak System
+**Consistency is Key.** Resona tracks your daily activity automatically. Simply start the timer, do your exercises, and your streak increases. You can customize your schedule (e.g., exclude Sundays) so you don't lose your streak on planned rest days.
 
-2. **Clone the repository:**
-   ```bash
-   git clone https://github.com/DasLykia/Voice-Streak-APP.git
-   cd Voice-Streak-APP
+### 🎙️ Integrated Recording
+**Listen to your Progress.** Don't just log time, log your voice. Resona includes a built-in audio recorder that syncs with your session.
+*   Select your input device & microphone gain.
+*   Auto-saves recordings with the date and session ID.
+*   Review past recordings in the integrated Library.
+
+### 🤒 Sick Day Recovery
+**Rest is Training.** Vocal health comes first. If you are sick or your voice is strained, you shouldn't be punished for taking a break. Use the **"I was sick"** button to retroactively repair a broken streak.
+
+### 📊 Statistics & Analytics
+**Visualize your Journey.** Get insights into your training habits with detailed charts and stats:
+*   Total Lifetime Practice Time
+*   Average Session Duration
+*   Calendar Heatmap (Github style)
+*   Session History Logs
+
+### 📝 Training Plan Editor
+**Your Routine, Your Rules.** Keep your exercises right in front of you. Resona features a built-in text editor to write down your warm-ups, scales, and song lists.
+
+---
+
+## Built With
+
+Resona is built with modern web technologies wrapped in a high-performance desktop shell:
+
+- [Electron](https://www.electronjs.org/) (App Framework)
+- [React](https://react.dev/) (UI Library)
+- [TypeScript](https://www.typescriptlang.org/) (Logic & Safety)
+- [Velopack](https://velopack.io/) (Installer & Auto-Updates)
+- [Recharts](https://recharts.org/) (Data Visualization)
+
+---
+
+## Development
+
+1. **Clone the repo**
+   ```sh
+   git clone https://github.com/DasLykia/Resona.git
+2. **Install dependencies**
+   ```sh
+   npm install
+3. **Run locally**
+   ```sh
+   npm run dev
+   
+---
+
+## 🔒 Privacy
+- 📁 Your audio recordings are stored securely on your computer.
+- 📊 Your statistics and settings are stored in your local AppData folder.
+- 🚫 No personal data or audio is ever sent to external servers.
+
+## 💬 Support
+- If you are having trouble with Resona, have a bug report, or a feature request, please Open an Issue.
